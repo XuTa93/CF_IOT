@@ -37,13 +37,13 @@ const CONFIG = {
     maxDataPoints: 60,
 };
 
-// Dữ liệu sensor hiện tại
+// Dữ liệu sensor & phần cứng hiện tại
 const sensorData = {
     temperature: 0,
-    humidity: 0,
-    pressure: 0,
-    rssi: 0,
-    history: [],       // Mảng lưu lịch sử nhiệt độ { time, value }
+    setTempMin: 30,     // Ngưỡng Min (Arc Min: 20~120°C)
+    setTempMax: 100,    // Ngưỡng Max (Arc Max: 40~140°C)
+    encoderCount: 0,    // Vị trí Rotary Encoder EC11
+    history: [],        // Mảng lưu lịch sử nhiệt độ { time, value }
     tempMin: Infinity,
     tempMax: -Infinity,
     tempSum: 0,
@@ -132,22 +132,18 @@ function initNavigation() {
 }
 
 // ============================================================
-// 6. GIẢ LẬP DỮ LIỆU SENSOR (Khi chưa kết nối ESP32 thật)
+// 6. GIẢ LẬP DỮ LIỆU THỰC TẾ (Khớp với Firmware ESP32)
 // ============================================================
 function generateSimulatedData() {
-    // Nhiệt độ: dao động quanh 70~120°C (giống firmware ESP32)
+    // Nhiệt độ: dao động quanh 70~120°C (giống firmware ESP32 main.cpp)
     const baseTemp = 95;
     const variation = Math.sin(Date.now() / 10000) * 20 + (Math.random() - 0.5) * 5;
     sensorData.temperature = parseFloat((baseTemp + variation).toFixed(1));
 
-    // Độ ẩm: 40~85%
-    sensorData.humidity = Math.round(60 + Math.sin(Date.now() / 15000) * 15 + (Math.random() - 0.5) * 5);
-
-    // Áp suất: 1000~1025 hPa
-    sensorData.pressure = Math.round(1013 + Math.sin(Date.now() / 20000) * 10 + (Math.random() - 0.5) * 2);
-
-    // WiFi RSSI: -30 đến -80 dBm
-    sensorData.rssi = Math.round(-55 + Math.sin(Date.now() / 8000) * 15 + (Math.random() - 0.5) * 5);
+    // Giả lập cài đặt Arc Min / Arc Max và Encoder EC11
+    sensorData.setTempMin = 30 + Math.round(Math.sin(Date.now() / 30000) * 5);
+    sensorData.setTempMax = 105 + Math.round(Math.cos(Date.now() / 30000) * 5);
+    sensorData.encoderCount = Math.round(Math.sin(Date.now() / 5000) * 15);
 
     // Lưu lịch sử
     const now = new Date();
@@ -174,14 +170,14 @@ function generateSimulatedData() {
 function updateUI() {
     // ---- Thẻ thống kê ----
     const tempEl = $('#tempValue');
-    const humEl = $('#humValue');
-    const pressEl = $('#pressValue');
-    const rssiEl = $('#rssiValue');
+    const minEl = $('#setTempMinValue');
+    const maxEl = $('#setTempMaxValue');
+    const encEl = $('#encoderValue');
 
     if (tempEl) tempEl.textContent = sensorData.temperature.toFixed(1);
-    if (humEl) humEl.textContent = sensorData.humidity;
-    if (pressEl) pressEl.textContent = sensorData.pressure;
-    if (rssiEl) rssiEl.textContent = sensorData.rssi;
+    if (minEl) minEl.textContent = sensorData.setTempMin;
+    if (maxEl) maxEl.textContent = sensorData.setTempMax;
+    if (encEl) encEl.textContent = (sensorData.encoderCount > 0 ? '+' : '') + sensorData.encoderCount;
 
     // Trend indicators
     if (sensorData.history.length >= 2) {

@@ -127,7 +127,7 @@
                         <span class="card-icon card-icon--teal">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
                         </span>
-                        <span class="card-label">Nhiệt độ</span>
+                        <span class="card-label">Nhiệt độ thực</span>
                     </div>
                     <div class="card-value" id="tempValue">--.-</div>
                     <div class="card-unit">°C</div>
@@ -137,48 +137,48 @@
                     </div>
                 </div>
 
-                <div class="card stat-card" id="card-humidity">
+                <div class="card stat-card" id="card-temp-min">
                     <div class="card-header">
                         <span class="card-icon card-icon--blue">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                         </span>
-                        <span class="card-label">Độ ẩm</span>
+                        <span class="card-label">Ngưỡng Min</span>
                     </div>
-                    <div class="card-value" id="humValue">--</div>
-                    <div class="card-unit">%</div>
+                    <div class="card-value" id="setTempMinValue">30</div>
+                    <div class="card-unit">°C</div>
                     <div class="card-footer">
-                        <span class="card-trend card-trend--down" id="humTrend">↓ 0.0%</span>
-                        <span class="card-time">Cập nhật vừa xong</span>
+                        <span class="card-trend card-trend--neutral" id="tempMinStatus">Cài đặt (Arc Min)</span>
+                        <span class="card-time">20 - 120°C</span>
                     </div>
                 </div>
 
-                <div class="card stat-card" id="card-pressure">
+                <div class="card stat-card" id="card-temp-max">
                     <div class="card-header">
                         <span class="card-icon card-icon--amber">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
                         </span>
-                        <span class="card-label">Áp suất</span>
+                        <span class="card-label">Ngưỡng Max</span>
                     </div>
-                    <div class="card-value" id="pressValue">----</div>
-                    <div class="card-unit">hPa</div>
+                    <div class="card-value" id="setTempMaxValue">100</div>
+                    <div class="card-unit">°C</div>
                     <div class="card-footer">
-                        <span class="card-trend card-trend--neutral" id="pressTrend">→ 0.0%</span>
-                        <span class="card-time">Cập nhật vừa xong</span>
+                        <span class="card-trend card-trend--neutral" id="tempMaxStatus">Cài đặt (Arc Max)</span>
+                        <span class="card-time">40 - 140°C</span>
                     </div>
                 </div>
 
-                <div class="card stat-card" id="card-wifi">
+                <div class="card stat-card" id="card-encoder">
                     <div class="card-header">
                         <span class="card-icon card-icon--rose">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
                         </span>
-                        <span class="card-label">WiFi RSSI</span>
+                        <span class="card-label">Núm xoay EC11</span>
                     </div>
-                    <div class="card-value" id="rssiValue">--</div>
-                    <div class="card-unit">dBm</div>
+                    <div class="card-value" id="encoderValue">0</div>
+                    <div class="card-unit">Nấc</div>
                     <div class="card-footer">
-                        <span class="card-trend card-trend--neutral" id="rssiTrend">Ổn định</span>
-                        <span class="card-time">Cập nhật vừa xong</span>
+                        <span class="card-trend card-trend--neutral" id="encoderStatus">Vị trí Encoder</span>
+                        <span class="card-time">Xoay CW/CCW</span>
                     </div>
                 </div>
             </div>
