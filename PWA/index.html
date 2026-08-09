@@ -135,7 +135,7 @@
                     </div>
 
                     <div class="lvgl-display-container" style="display: flex; align-items: center; justify-content: space-between; padding: 25px 10px; background: #000000; border-radius: 12px; margin-top: 10px;">
-                        <!-- Bên trái: Arc Min (Cài đặt Min) -->
+                        <!-- Bên trái: Ngưỡng Thấp (Cài đặt Min) -->
                         <div class="lvgl-arc-box" style="display: flex; flex-direction: column; align-items: center; flex: 1;">
                             <div style="position: relative; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;">
                                 <svg width="100" height="100" viewBox="0 0 100 100">
@@ -148,18 +148,18 @@
                                 </svg>
                                 <span id="lvglArcMinText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #60a5fa; font-family: sans-serif;">30</span>
                             </div>
-                            <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">ARC MIN</span>
+                            <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">NGƯỠNG THẤP</span>
                         </div>
 
-                        <!-- Ở giữa: Nhiệt độ tức thời hiển thị số to màu xanh neon -->
+                        <!-- Ở giữa: Nhiệt độ bây giờ hiển thị số to màu xanh neon -->
                         <div class="lvgl-center-box" style="display: flex; flex-direction: column; align-items: center; flex: 1.4; text-align: center;">
                             <div id="lvglMainTemp" style="font-size: 3.5rem; font-weight: 800; color: #10b981; font-family: 'Inter', system-ui, monospace; line-height: 1; letter-spacing: -1.5px; text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
                                 120.5
                             </div>
-                            <span style="font-size: 0.85rem; color: #9ca3af; margin-top: 8px; font-weight: 600; letter-spacing: 0.5px;">TỨC THỜI (°C)</span>
+                            <span style="font-size: 0.85rem; color: #9ca3af; margin-top: 8px; font-weight: 600; letter-spacing: 0.5px;">NHIỆT ĐỘ BÂY GIỜ (°C)</span>
                         </div>
 
-                        <!-- Bên phải: Arc Max (Cài đặt Max) -->
+                        <!-- Bên phải: Ngưỡng Cao (Cài đặt Max) -->
                         <div class="lvgl-arc-box" style="display: flex; flex-direction: column; align-items: center; flex: 1;">
                             <div style="position: relative; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;">
                                 <svg width="100" height="100" viewBox="0 0 100 100">
@@ -172,22 +172,22 @@
                                 </svg>
                                 <span id="lvglArcMaxText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #a3e635; font-family: sans-serif;">100</span>
                             </div>
-                            <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">ARC MAX</span>
+                            <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">NGƯỠNG CAO</span>
                         </div>
                     </div>
 
                     <!-- 3 Khối Thống kê Min / Avg / Max ở phiên đo -->
                     <div class="gauge-limits" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
                         <div class="limit-item" style="background: rgba(255,255,255,0.04); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
-                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Phiên đo Min</span>
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Thấp nhất</span>
                             <span class="limit-value" id="tempMin" style="font-weight: 700; color: #60a5fa; font-size: 0.95rem;">--</span>
                         </div>
                         <div class="limit-item" style="background: rgba(255,255,255,0.04); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
-                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Phiên đo Avg</span>
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Trung bình</span>
                             <span class="limit-value" id="tempAvg" style="font-weight: 700; color: #10b981; font-size: 0.95rem;">--</span>
                         </div>
                         <div class="limit-item" style="background: rgba(255,255,255,0.04); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
-                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Phiên đo Max</span>
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Cao nhất</span>
                             <span class="limit-value" id="tempMax" style="font-weight: 700; color: #f43f5e; font-size: 0.95rem;">--</span>
                         </div>
                     </div>
@@ -197,8 +197,8 @@
             <!-- TEMPERATURE ALERTS LOG SECTION -->
             <div class="card devices-card">
                 <div class="card-header">
-                    <span class="card-label">🚨 Nhật ký & Cảnh báo Nhiệt độ</span>
-                    <span class="device-count" id="alertCount">0 sự cố</span>
+                    <span class="card-label">🚨 Lịch sử Cảnh báo Nhiệt độ</span>
+                    <span class="device-count" id="alertCount">0 lần cảnh báo</span>
                 </div>
                 <div class="devices-grid" id="alertsGrid">
                     <!-- Được tạo bởi JavaScript -->

@@ -549,7 +549,7 @@ function renderAlertsGrid() {
 
     const recentAlerts = sensorData.alertsLog.slice(0, 4);
 
-    if (countEl) countEl.textContent = `${sensorData.alertsLog.length} sự cố`;
+    if (countEl) countEl.textContent = `${sensorData.alertsLog.length} lần cảnh báo`;
 
     if (recentAlerts.length === 0) {
         grid.innerHTML = `
