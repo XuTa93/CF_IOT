@@ -225,10 +225,10 @@ function processTemperatureData(tempValue) {
 
     if (sensorData.temperature > sensorData.setTempMax) {
         status = 'high';
-        alertMsg = `⚠️ CẢNH BÁO QUÁ NHIỆT: ${sensorData.temperature}°C vượt ngưỡng Max (${sensorData.setTempMax}°C)`;
+        alertMsg = `${sensorData.temperature}°C (vượt ngưỡng Max ${sensorData.setTempMax}°C)`;
     } else if (sensorData.temperature < sensorData.setTempMin) {
         status = 'low';
-        alertMsg = `❄️ CẢNH BÁO DƯỚI NGƯỠNG: ${sensorData.temperature}°C thấp hơn ngưỡng Min (${sensorData.setTempMin}°C)`;
+        alertMsg = `${sensorData.temperature}°C (thấp hơn ngưỡng Min ${sensorData.setTempMin}°C)`;
     }
 
     const now = new Date();
@@ -567,11 +567,8 @@ function renderAlertsGrid() {
                 <strong class="device-name">${alert.status === 'high' ? '🚨 Cảnh báo Quá nhiệt' : '❄️ Dưới ngưỡng Min'}</strong>
             </div>
             <div class="device-info">
-                <span class="device-type">Giá trị: <strong>${alert.temp}°C</strong></span>
+                <span class="device-type">Chi tiết: <strong>${alert.message}</strong></span>
                 <span class="device-ip">${alert.time.toLocaleTimeString('vi-VN')}</span>
-            </div>
-            <div class="device-status-text" style="font-size: 0.8rem; margin-top: 4px;">
-                ${alert.message}
             </div>
         </div>
     `).join('');
