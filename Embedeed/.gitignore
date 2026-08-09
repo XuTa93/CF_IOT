@@ -1,0 +1,48 @@
+# PlatformIO & Build Cache
+.pio/
+.cache/
+
+# CMake build directories & output
+/build/
+/bin/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+sdkconfig.old
+
+# Build artifacts & executables
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.elf
+*.bin
+*.hex
+*.map
+
+# VS Code temporary files
+.vscode/*.log
+.vscode/.cache/
+.vscode/.vs/
+.vs/
+
+# OS generated files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+
+# Temporary & Swap files
+*.tmp
+*.log
+*.bak
+*.swp
+*~
+
+# External Libraries
+/lvgl/

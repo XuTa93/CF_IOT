@@ -1,0 +1,58 @@
+# PlatformIO & Embedded Build Directories
+.pio/
+.cache/
+**/build/
+**/bin/
+**/CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+sdkconfig.old
+
+# Build Artifacts & Executables
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.elf
+*.bin
+*.hex
+*.map
+
+# External Libraries & Submodules (Managed externally)
+/Embedeed/lvgl/
+lvgl/
+
+# IDE & Editor files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/c_cpp_properties.json
+.vs/
+*.suo
+*.user
+*.userosv
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# OS Generated Files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+.DS_Store?
+ehthumbs.db
+
+# Temporary & Log Files
+*.tmp
+*.log
+*.bak
+*.swp
+*~
+*.crash
