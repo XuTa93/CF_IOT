@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="CF IOT Dashboard - Giám sát thiết bị IoT thời gian thực">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CF IOT">
+
+    <title>CF IOT Dashboard</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-512.jpg" type="image/jpeg">
+    <link rel="apple-touch-icon" href="icons/icon-512.jpg">
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ===== SIDEBAR NAVIGATION ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <span class="logo-text">CF IOT</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="dashboard" id="nav-dashboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="devices" id="nav-devices">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                    <rect x="9" y="9" width="6" height="6"/>
+                    <line x1="9" y1="1" x2="9" y2="4"/>
+                    <line x1="15" y1="1" x2="15" y2="4"/>
+                    <line x1="9" y1="20" x2="9" y2="23"/>
+                    <line x1="15" y1="20" x2="15" y2="23"/>
+                    <line x1="20" y1="9" x2="23" y2="9"/>
+                    <line x1="20" y1="14" x2="23" y2="14"/>
+                    <line x1="1" y1="9" x2="4" y2="9"/>
+                    <line x1="1" y1="14" x2="4" y2="14"/>
+                </svg>
+                <span>Thiết bị</span>
+            </a>
+            <a href="#" class="nav-item" data-page="history" id="nav-history">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                <span>Lịch sử</span>
+            </a>
+            <a href="#" class="nav-item" data-page="settings" id="nav-settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>Cài đặt</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot status-offline"></span>
+                <span class="status-text">Chưa kết nối</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== OVERLAY (MOBILE) ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            <div class="topbar-title">
+                <h1>Dashboard</h1>
+                <p class="topbar-subtitle">Giám sát thiết bị thời gian thực</p>
+            </div>
+            <div class="topbar-actions">
+                <span class="live-indicator" id="liveIndicator">
+                    <span class="live-dot"></span>
+                    LIVE
+                </span>
+                <span class="topbar-time" id="topbarTime">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- DASHBOARD PAGE -->
+        <section class="page active" id="page-dashboard">
+
+            <!-- STATS CARDS ROW -->
+            <div class="stats-row">
+                <div class="card stat-card" id="card-temperature">
+                    <div class="card-header">
+                        <span class="card-icon card-icon--teal">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                        </span>
+                        <span class="card-label">Nhiệt độ</span>
+                    </div>
+                    <div class="card-value" id="tempValue">--.-</div>
+                    <div class="card-unit">°C</div>
+                    <div class="card-footer">
+                        <span class="card-trend card-trend--up" id="tempTrend">↑ 0.0%</span>
+                        <span class="card-time">Cập nhật vừa xong</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card" id="card-humidity">
+                    <div class="card-header">
+                        <span class="card-icon card-icon--blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                        </span>
+                        <span class="card-label">Độ ẩm</span>
+                    </div>
+                    <div class="card-value" id="humValue">--</div>
+                    <div class="card-unit">%</div>
+                    <div class="card-footer">
+                        <span class="card-trend card-trend--down" id="humTrend">↓ 0.0%</span>
+                        <span class="card-time">Cập nhật vừa xong</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card" id="card-pressure">
+                    <div class="card-header">
+                        <span class="card-icon card-icon--amber">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </span>
+                        <span class="card-label">Áp suất</span>
+                    </div>
+                    <div class="card-value" id="pressValue">----</div>
+                    <div class="card-unit">hPa</div>
+                    <div class="card-footer">
+                        <span class="card-trend card-trend--neutral" id="pressTrend">→ 0.0%</span>
+                        <span class="card-time">Cập nhật vừa xong</span>
+                    </div>
+                </div>
+
+                <div class="card stat-card" id="card-wifi">
+                    <div class="card-header">
+                        <span class="card-icon card-icon--rose">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                        </span>
+                        <span class="card-label">WiFi RSSI</span>
+                    </div>
+                    <div class="card-value" id="rssiValue">--</div>
+                    <div class="card-unit">dBm</div>
+                    <div class="card-footer">
+                        <span class="card-trend card-trend--neutral" id="rssiTrend">Ổn định</span>
+                        <span class="card-time">Cập nhật vừa xong</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHART + GAUGE ROW -->
+            <div class="content-row">
+                <!-- Biểu đồ nhiệt độ theo thời gian -->
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <span class="card-label">📈 Biểu đồ Nhiệt độ</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-range="1h">1H</button>
+                            <button class="chart-btn" data-range="6h">6H</button>
+                            <button class="chart-btn" data-range="24h">24H</button>
+                        </div>
+                    </div>
+                    <div class="chart-container" id="tempChart">
+                        <canvas id="tempCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gauge nhiệt độ hiện tại -->
+                <div class="card gauge-card">
+                    <div class="card-header">
+                        <span class="card-label">🌡️ Nhiệt độ hiện tại</span>
+                    </div>
+                    <div class="gauge-container">
+                        <div class="gauge" id="tempGauge">
+                            <div class="gauge-body">
+                                <div class="gauge-fill" id="gaugeFill"></div>
+                                <div class="gauge-cover">
+                                    <span class="gauge-value" id="gaugeValue">--.-</span>
+                                    <span class="gauge-label">°C</span>
+                                </div>
+                            </div>
+                            <div class="gauge-ticks">
+                                <span>0°</span>
+                                <span>50°</span>
+                                <span>100°</span>
+                                <span>150°</span>
+                            </div>
+                        </div>
+                        <div class="gauge-limits">
+                            <div class="limit-item">
+                                <span class="limit-label">Min</span>
+                                <span class="limit-value" id="tempMin">--</span>
+                            </div>
+                            <div class="limit-item">
+                                <span class="limit-label">Trung bình</span>
+                                <span class="limit-value" id="tempAvg">--</span>
+                            </div>
+                            <div class="limit-item">
+                                <span class="limit-label">Max</span>
+                                <span class="limit-value" id="tempMax">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEVICES STATUS ROW -->
+            <div class="card devices-card">
+                <div class="card-header">
+                    <span class="card-label">⚡ Trạng thái thiết bị</span>
+                    <span class="device-count" id="deviceCount">0 thiết bị</span>
+                </div>
+                <div class="devices-grid" id="devicesGrid">
+                    <!-- Được tạo bởi JavaScript -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- DEVICES PAGE -->
+        <section class="page" id="page-devices">
+            <div class="card">
+                <div class="card-header"><span class="card-label">🔌 Quản lý thiết bị</span></div>
+                <p class="placeholder-text">Trang quản lý thiết bị - Đang phát triển...</p>
+            </div>
+        </section>
+
+        <!-- HISTORY PAGE -->
+        <section class="page" id="page-history">
+            <div class="card">
+                <div class="card-header"><span class="card-label">📊 Lịch sử dữ liệu</span></div>
+                <p class="placeholder-text">Trang lịch sử dữ liệu - Đang phát triển...</p>
+            </div>
+        </section>
+
+        <!-- SETTINGS PAGE -->
+        <section class="page" id="page-settings">
+            <div class="card">
+                <div class="card-header"><span class="card-label">⚙️ Cài đặt kết nối</span></div>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label for="deviceIp">Địa chỉ IP thiết bị ESP32</label>
+                        <input type="text" id="deviceIp" placeholder="Ví dụ: 192.168.1.100" value="">
+                    </div>
+                    <div class="form-group">
+                        <label for="devicePort">Cổng (Port)</label>
+                        <input type="number" id="devicePort" placeholder="80" value="80">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateInterval">Tần suất cập nhật (giây)</label>
+                        <input type="number" id="updateInterval" placeholder="2" value="2" min="1" max="60">
+                    </div>
+                    <button class="btn btn-primary" id="btnSaveSettings">💾 Lưu cài đặt</button>
+                    <button class="btn btn-secondary" id="btnTestConnection">🔗 Kiểm tra kết nối</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
