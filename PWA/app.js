@@ -318,56 +318,90 @@ function updateUI() {
     renderAlertsGrid();
 }
 
-// Cột Nhiệt Kế Thủy Ngân Dạng Đứng (Thermometer Bar)
+// Tính toán đường cong SVG Arc và vị trí chấm tròn cho Arc Min / Arc Max
+function getArcPathAndDot(val, minLimit, maxLimit) {
+    const pct = Math.min(Math.max((val - minLimit) / (maxLimit - minLimit), 0.05), 0.95);
+    const startAngle = 135 * (Math.PI / 180);
+    const totalSweep = 270 * (Math.PI / 180);
+    const currentAngle = startAngle + pct * totalSweep;
+
+    const R = 38;
+    const cx = 50, cy = 50;
+
+    const startX = cx + R * Math.cos(startAngle);
+    const startY = cy + R * Math.sin(startAngle);
+
+    const endX = cx + R * Math.cos(currentAngle);
+    const endY = cy + R * Math.sin(currentAngle);
+
+    const largeArc = pct * 270 > 180 ? 1 : 0;
+    const pathD = `M ${startX.toFixed(1)} ${startY.toFixed(1)} A ${R} ${R} 0 ${largeArc} 1 ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+
+    return { pathD, dotX: endX.toFixed(1), dotY: endY.toFixed(1) };
+}
+
+// Cập nhật Màn hình LVGL (SquareLine Studio layout)
 function updateGauge(value) {
-    const barFill = $('#thermoBarFill');
-    const valDisplay = $('#thermoValueDisplay');
+    const mainTempEl = $('#lvglMainTemp');
+    const minTextEl = $('#lvglArcMinText');
+    const maxTextEl = $('#lvglArcMaxText');
+    const minPathEl = $('#lvglArcMinPath');
+    const minDotEl = $('#lvglArcMinDot');
+    const maxPathEl = $('#lvglArcMaxPath');
+    const maxDotEl = $('#lvglArcMaxDot');
     const badge = $('#tempStatusBadge');
-    const stateText = $('#thermoStateText');
 
-    if (valDisplay) valDisplay.textContent = value.toFixed(1);
-
-    // Tính % từ 0 đến 150°C
-    const percent = Math.min(Math.max((value / 150) * 100, 5), 100);
-
-    let color, gradient, statusStr, badgeBg, badgeBorder;
-
-    if (value < sensorData.setTempMin) {
-        color = '#3b82f6';
-        gradient = 'linear-gradient(to top, #1e3a8a, #3b82f6)';
-        statusStr = '❄️ Dưới ngưỡng Min';
-        badgeBg = 'rgba(59, 130, 246, 0.15)';
-        badgeBorder = '#3b82f6';
-    } else if (value <= sensorData.setTempMax) {
-        color = '#00d4aa';
-        gradient = 'linear-gradient(to top, #00d4aa, #10b981)';
-        statusStr = 'An toàn';
-        badgeBg = 'rgba(0, 212, 170, 0.15)';
-        badgeBorder = '#00d4aa';
-    } else {
-        color = '#f43f5e';
-        gradient = 'linear-gradient(to top, #f59e0b, #f43f5e)';
-        statusStr = '🚨 Quá nhiệt!';
-        badgeBg = 'rgba(244, 63, 94, 0.15)';
-        badgeBorder = '#f43f5e';
+    // 1. Cập nhật nhiệt độ chính ở giữa
+    if (mainTempEl) {
+        mainTempEl.textContent = value.toFixed(1);
+        if (value > sensorData.setTempMax) {
+            mainTempEl.style.color = '#f43f5e';
+            mainTempEl.style.textShadow = '0 0 20px rgba(244, 63, 94, 0.6)';
+        } else if (value < sensorData.setTempMin) {
+            mainTempEl.style.color = '#3b82f6';
+            mainTempEl.style.textShadow = '0 0 20px rgba(59, 130, 246, 0.6)';
+        } else {
+            mainTempEl.style.color = '#10b981';
+            mainTempEl.style.textShadow = '0 0 20px rgba(16, 185, 129, 0.5)';
+        }
     }
 
-    if (barFill) {
-        barFill.style.height = `${percent}%`;
-        barFill.style.background = gradient;
-        barFill.style.boxShadow = `0 0 14px ${color}`;
+    // 2. Cập nhật Arc Min (Bên trái)
+    if (minTextEl) minTextEl.textContent = Math.round(sensorData.setTempMin);
+    if (minPathEl && minDotEl) {
+        const minArc = getArcPathAndDot(sensorData.setTempMin, 20, 120);
+        minPathEl.setAttribute('d', minArc.pathD);
+        minDotEl.setAttribute('cx', minArc.dotX);
+        minDotEl.setAttribute('cy', minArc.dotY);
     }
 
-    if (stateText) {
-        stateText.textContent = statusStr;
-        stateText.style.color = color;
+    // 3. Cập nhật Arc Max (Bên phải)
+    if (maxTextEl) maxTextEl.textContent = Math.round(sensorData.setTempMax);
+    if (maxPathEl && maxDotEl) {
+        const maxArc = getArcPathAndDot(sensorData.setTempMax, 40, 140);
+        maxPathEl.setAttribute('d', maxArc.pathD);
+        maxDotEl.setAttribute('cx', maxArc.dotX);
+        maxDotEl.setAttribute('cy', maxArc.dotY);
     }
 
+    // 4. Badge trạng thái
     if (badge) {
-        badge.textContent = statusStr;
-        badge.style.color = color;
-        badge.style.background = badgeBg;
-        badge.style.borderColor = badgeBorder;
+        if (value > sensorData.setTempMax) {
+            badge.textContent = '🚨 Quá nhiệt!';
+            badge.style.color = '#f43f5e';
+            badge.style.background = 'rgba(244, 63, 94, 0.2)';
+            badge.style.borderColor = '#f43f5e';
+        } else if (value < sensorData.setTempMin) {
+            badge.textContent = '❄️ Dưới Min';
+            badge.style.color = '#3b82f6';
+            badge.style.background = 'rgba(59, 130, 246, 0.2)';
+            badge.style.borderColor = '#3b82f6';
+        } else {
+            badge.textContent = 'Bình thường';
+            badge.style.color = '#10b981';
+            badge.style.background = 'rgba(16, 185, 129, 0.2)';
+            badge.style.borderColor = '#10b981';
+        }
     }
 }
 
