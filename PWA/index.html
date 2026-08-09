@@ -195,40 +195,39 @@
                     </div>
                 </div>
 
-                <!-- Đồng hồ Gauge Nhiệt độ -->
+                <!-- Cột Nhiệt Kế Thủy Ngân Tức Thời -->
                 <div class="card gauge-card">
                     <div class="card-header">
-                        <span class="card-label">🌡️ Thước đo Nhiệt độ Tức thời</span>
+                        <span class="card-label">🌡️ Cột Nhiệt độ Tức thời</span>
+                        <span class="status-badge" id="tempStatusBadge" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; background: rgba(0, 212, 170, 0.15); color: #00d4aa; border: 1px solid #00d4aa; font-weight: 600;">Bình thường</span>
                     </div>
-                    <div class="gauge-container">
-                        <div class="gauge" id="tempGauge">
-                            <div class="gauge-body">
-                                <div class="gauge-fill" id="gaugeFill"></div>
-                                <div class="gauge-cover">
-                                    <span class="gauge-value" id="gaugeValue">--.-</span>
-                                    <span class="gauge-label">°C</span>
-                                </div>
-                            </div>
-                            <div class="gauge-ticks">
-                                <span>0°</span>
-                                <span>50°</span>
-                                <span>100°</span>
-                                <span>150°</span>
-                            </div>
+                    <div class="thermometer-container" style="display: flex; align-items: center; justify-content: space-around; padding: 20px 10px;">
+                        <!-- Cột thủy ngân dạng đứng -->
+                        <div class="thermo-bar-wrapper" style="position: relative; width: 32px; height: 160px; background: rgba(255,255,255,0.06); border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);">
+                            <div id="thermoBarFill" style="width: 100%; height: 50%; background: linear-gradient(to top, #00d4aa, #3b82f6); border-radius: 16px; transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease; box-shadow: 0 0 12px rgba(0,212,170,0.5);"></div>
                         </div>
-                        <div class="gauge-limits">
-                            <div class="limit-item">
-                                <span class="limit-label">Thấp nhất (Min)</span>
-                                <span class="limit-value" id="tempMin">--</span>
-                            </div>
-                            <div class="limit-item">
-                                <span class="limit-label">Trung bình (Avg)</span>
-                                <span class="limit-value" id="tempAvg">--</span>
-                            </div>
-                            <div class="limit-item">
-                                <span class="limit-label">Cao nhất (Max)</span>
-                                <span class="limit-value" id="tempMax">--</span>
-                            </div>
+                        
+                        <!-- Hiển thị chỉ số nhiệt độ nổi bật -->
+                        <div class="thermo-info" style="display: flex; flex-direction: column; align-items: center;">
+                            <span id="thermoValueDisplay" style="font-size: 3rem; font-weight: 700; color: #fff; line-height: 1; letter-spacing: -1px;">--.-</span>
+                            <span style="font-size: 1.1rem; color: var(--text-muted); margin-top: 4px;">°C</span>
+                            <span id="thermoStateText" style="font-size: 0.9rem; color: #00d4aa; margin-top: 8px; font-weight: 600;">An toàn</span>
+                        </div>
+                    </div>
+
+                    <!-- 3 Khối Thống kê Min / Avg / Max -->
+                    <div class="gauge-limits" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; text-align: center;">
+                        <div class="limit-item" style="background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Thấp nhất (Min)</span>
+                            <span class="limit-value" id="tempMin" style="font-weight: 600; color: #3b82f6; font-size: 0.95rem;">--</span>
+                        </div>
+                        <div class="limit-item" style="background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Trung bình (Avg)</span>
+                            <span class="limit-value" id="tempAvg" style="font-weight: 600; color: #00d4aa; font-size: 0.95rem;">--</span>
+                        </div>
+                        <div class="limit-item" style="background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="limit-label" style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Cao nhất (Max)</span>
+                            <span class="limit-value" id="tempMax" style="font-weight: 600; color: #f43f5e; font-size: 0.95rem;">--</span>
                         </div>
                     </div>
                 </div>

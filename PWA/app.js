@@ -318,35 +318,57 @@ function updateUI() {
     renderAlertsGrid();
 }
 
-// Gauge Conic Gradient
+// Cột Nhiệt Kế Thủy Ngân Dạng Đứng (Thermometer Bar)
 function updateGauge(value) {
-    const gaugeEl = $('#tempGauge');
-    const valueEl = $('#gaugeValue');
-    const fillEl = $('#gaugeFill');
+    const barFill = $('#thermoBarFill');
+    const valDisplay = $('#thermoValueDisplay');
+    const badge = $('#tempStatusBadge');
+    const stateText = $('#thermoStateText');
 
-    if (!gaugeEl || !fillEl) return;
+    if (valDisplay) valDisplay.textContent = value.toFixed(1);
 
-    const percent = Math.min(Math.max((value - CONFIG.tempMinGauge) / (CONFIG.tempMaxGauge - CONFIG.tempMinGauge) * 100, 0), 100);
+    // Tính % từ 0 đến 150°C
+    const percent = Math.min(Math.max((value / 150) * 100, 5), 100);
 
-    let color;
+    let color, gradient, statusStr, badgeBg, badgeBorder;
+
     if (value < sensorData.setTempMin) {
         color = '#3b82f6';
+        gradient = 'linear-gradient(to top, #1e3a8a, #3b82f6)';
+        statusStr = '❄️ Dưới ngưỡng Min';
+        badgeBg = 'rgba(59, 130, 246, 0.15)';
+        badgeBorder = '#3b82f6';
     } else if (value <= sensorData.setTempMax) {
         color = '#00d4aa';
+        gradient = 'linear-gradient(to top, #00d4aa, #10b981)';
+        statusStr = 'An toàn';
+        badgeBg = 'rgba(0, 212, 170, 0.15)';
+        badgeBorder = '#00d4aa';
     } else {
         color = '#f43f5e';
+        gradient = 'linear-gradient(to top, #f59e0b, #f43f5e)';
+        statusStr = '🚨 Quá nhiệt!';
+        badgeBg = 'rgba(244, 63, 94, 0.15)';
+        badgeBorder = '#f43f5e';
     }
 
-    const angle = (percent / 100) * 180;
-    fillEl.style.background = `conic-gradient(
-        ${color} 0deg,
-        ${color} ${angle}deg,
-        rgba(255,255,255,0.05) ${angle}deg,
-        rgba(255,255,255,0.05) 180deg
-    )`;
+    if (barFill) {
+        barFill.style.height = `${percent}%`;
+        barFill.style.background = gradient;
+        barFill.style.boxShadow = `0 0 14px ${color}`;
+    }
 
-    gaugeEl.style.setProperty('--gauge-color', color);
-    if (valueEl) valueEl.textContent = value.toFixed(1);
+    if (stateText) {
+        stateText.textContent = statusStr;
+        stateText.style.color = color;
+    }
+
+    if (badge) {
+        badge.textContent = statusStr;
+        badge.style.color = color;
+        badge.style.background = badgeBg;
+        badge.style.borderColor = badgeBorder;
+    }
 }
 
 // Biểu đồ Canvas
