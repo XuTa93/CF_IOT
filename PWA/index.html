@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="CF IOT Dashboard - Giám sát thiết bị IoT thời gian thực">
+    <meta name="description" content="CF IOT Temperature Monitor - Giám sát và cảnh báo nhiệt độ thời gian thực">
     <meta name="theme-color" content="#00d4aa">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="CF IOT">
+    <meta name="apple-mobile-web-app-title" content="CF Temp">
 
-    <title>CF IOT Dashboard</title>
+    <title>CF IOT - Giám sát Nhiệt độ</title>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -32,45 +32,33 @@
             <div class="logo">
                 <div class="logo-icon">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                        <path d="M2 17l10 5 10-5"/>
-                        <path d="M2 12l10 5 10-5"/>
+                        <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
                     </svg>
                 </div>
-                <span class="logo-text">CF IOT</span>
+                <span class="logo-text">CF TEMP</span>
             </div>
         </div>
 
         <nav class="sidebar-nav">
             <a href="#" class="nav-item active" data-page="dashboard" id="nav-dashboard">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
+                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
                 </svg>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="nav-item" data-page="devices" id="nav-devices">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
-                    <rect x="9" y="9" width="6" height="6"/>
-                    <line x1="9" y1="1" x2="9" y2="4"/>
-                    <line x1="15" y1="1" x2="15" y2="4"/>
-                    <line x1="9" y1="20" x2="9" y2="23"/>
-                    <line x1="15" y1="20" x2="15" y2="23"/>
-                    <line x1="20" y1="9" x2="23" y2="9"/>
-                    <line x1="20" y1="14" x2="23" y2="14"/>
-                    <line x1="1" y1="9" x2="4" y2="9"/>
-                    <line x1="1" y1="14" x2="4" y2="14"/>
-                </svg>
-                <span>Thiết bị</span>
+                <span>Giám sát</span>
             </a>
             <a href="#" class="nav-item" data-page="history" id="nav-history">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                 </svg>
-                <span>Lịch sử</span>
+                <span>Lịch sử Nhiệt độ</span>
+            </a>
+            <a href="#" class="nav-item" data-page="alerts" id="nav-alerts">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Cảnh báo</span>
             </a>
             <a href="#" class="nav-item" data-page="settings" id="nav-settings">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -105,8 +93,8 @@
                 </svg>
             </button>
             <div class="topbar-title">
-                <h1>Dashboard</h1>
-                <p class="topbar-subtitle">Giám sát thiết bị thời gian thực</p>
+                <h1>Giám sát Nhiệt độ</h1>
+                <p class="topbar-subtitle">Hệ thống đo đạc & cảnh báo nhiệt độ thời gian thực</p>
             </div>
             <div class="topbar-actions">
                 <span class="live-indicator" id="liveIndicator">
@@ -120,14 +108,15 @@
         <!-- DASHBOARD PAGE -->
         <section class="page active" id="page-dashboard">
 
-            <!-- STATS CARDS ROW -->
+            <!-- STATS CARDS ROW (100% TEMPERATURE) -->
             <div class="stats-row">
+                <!-- Thẻ 1: Nhiệt độ hiện tại -->
                 <div class="card stat-card" id="card-temperature">
                     <div class="card-header">
                         <span class="card-icon card-icon--teal">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
                         </span>
-                        <span class="card-label">Nhiệt độ thực</span>
+                        <span class="card-label">Nhiệt độ hiện tại</span>
                     </div>
                     <div class="card-value" id="tempValue">--.-</div>
                     <div class="card-unit">°C</div>
@@ -137,58 +126,61 @@
                     </div>
                 </div>
 
-                <div class="card stat-card" id="card-temp-min">
+                <!-- Thẻ 2: Nhiệt độ trung bình -->
+                <div class="card stat-card" id="card-temp-avg">
                     <div class="card-header">
                         <span class="card-icon card-icon--blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                        </span>
+                        <span class="card-label">Nhiệt độ Trung bình</span>
+                    </div>
+                    <div class="card-value" id="tempAvgCardValue">--.-</div>
+                    <div class="card-unit">°C</div>
+                    <div class="card-footer">
+                        <span class="card-trend card-trend--neutral" id="tempAvgStatus">Trong phiên đo</span>
+                        <span class="card-time">Tính trung bình</span>
+                    </div>
+                </div>
+
+                <!-- Thẻ 3: Ngưỡng Min Cài đặt -->
+                <div class="card stat-card" id="card-temp-min">
+                    <div class="card-header">
+                        <span class="card-icon card-icon--teal">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                         </span>
-                        <span class="card-label">Ngưỡng Min</span>
+                        <span class="card-label">Ngưỡng Cảnh báo Dưới</span>
                     </div>
                     <div class="card-value" id="setTempMinValue">30</div>
                     <div class="card-unit">°C</div>
                     <div class="card-footer">
-                        <span class="card-trend card-trend--neutral" id="tempMinStatus">Cài đặt (Arc Min)</span>
-                        <span class="card-time">20 - 120°C</span>
+                        <span class="card-trend card-trend--neutral" id="tempMinStatus">Giới hạn Min</span>
+                        <span class="card-time">Cài đặt (Arc Min)</span>
                     </div>
                 </div>
 
+                <!-- Thẻ 4: Ngưỡng Max Cài đặt -->
                 <div class="card stat-card" id="card-temp-max">
                     <div class="card-header">
-                        <span class="card-icon card-icon--amber">
+                        <span class="card-icon card-icon--rose">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
                         </span>
-                        <span class="card-label">Ngưỡng Max</span>
+                        <span class="card-label">Ngưỡng Cảnh báo Trên</span>
                     </div>
                     <div class="card-value" id="setTempMaxValue">100</div>
                     <div class="card-unit">°C</div>
                     <div class="card-footer">
-                        <span class="card-trend card-trend--neutral" id="tempMaxStatus">Cài đặt (Arc Max)</span>
-                        <span class="card-time">40 - 140°C</span>
-                    </div>
-                </div>
-
-                <div class="card stat-card" id="card-encoder">
-                    <div class="card-header">
-                        <span class="card-icon card-icon--rose">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                        </span>
-                        <span class="card-label">Núm xoay EC11</span>
-                    </div>
-                    <div class="card-value" id="encoderValue">0</div>
-                    <div class="card-unit">Nấc</div>
-                    <div class="card-footer">
-                        <span class="card-trend card-trend--neutral" id="encoderStatus">Vị trí Encoder</span>
-                        <span class="card-time">Xoay CW/CCW</span>
+                        <span class="card-trend card-trend--neutral" id="tempMaxStatus">Giới hạn Max</span>
+                        <span class="card-time">Cài đặt (Arc Max)</span>
                     </div>
                 </div>
             </div>
 
             <!-- CHART + GAUGE ROW -->
             <div class="content-row">
-                <!-- Biểu đồ nhiệt độ theo thời gian -->
+                <!-- Biểu đồ diễn biến nhiệt độ -->
                 <div class="card chart-card">
                     <div class="card-header">
-                        <span class="card-label">📈 Biểu đồ Nhiệt độ</span>
+                        <span class="card-label">📈 Biểu đồ Diễn biến Nhiệt độ Realtime</span>
                         <div class="chart-controls">
                             <button class="chart-btn active" data-range="1h">1H</button>
                             <button class="chart-btn" data-range="6h">6H</button>
@@ -200,10 +192,10 @@
                     </div>
                 </div>
 
-                <!-- Gauge nhiệt độ hiện tại -->
+                <!-- Đồng hồ Gauge Nhiệt độ -->
                 <div class="card gauge-card">
                     <div class="card-header">
-                        <span class="card-label">🌡️ Nhiệt độ hiện tại</span>
+                        <span class="card-label">🌡️ Thước đo Nhiệt độ Tức thời</span>
                     </div>
                     <div class="gauge-container">
                         <div class="gauge" id="tempGauge">
@@ -223,15 +215,15 @@
                         </div>
                         <div class="gauge-limits">
                             <div class="limit-item">
-                                <span class="limit-label">Min</span>
+                                <span class="limit-label">Thấp nhất (Min)</span>
                                 <span class="limit-value" id="tempMin">--</span>
                             </div>
                             <div class="limit-item">
-                                <span class="limit-label">Trung bình</span>
+                                <span class="limit-label">Trung bình (Avg)</span>
                                 <span class="limit-value" id="tempAvg">--</span>
                             </div>
                             <div class="limit-item">
-                                <span class="limit-label">Max</span>
+                                <span class="limit-label">Cao nhất (Max)</span>
                                 <span class="limit-value" id="tempMax">--</span>
                             </div>
                         </div>
@@ -239,39 +231,55 @@
                 </div>
             </div>
 
-            <!-- DEVICES STATUS ROW -->
+            <!-- TEMPERATURE ALERTS LOG SECTION -->
             <div class="card devices-card">
                 <div class="card-header">
-                    <span class="card-label">⚡ Trạng thái thiết bị</span>
-                    <span class="device-count" id="deviceCount">0 thiết bị</span>
+                    <span class="card-label">🚨 Nhật ký & Cảnh báo Nhiệt độ</span>
+                    <span class="device-count" id="alertCount">0 sự cố</span>
                 </div>
-                <div class="devices-grid" id="devicesGrid">
+                <div class="devices-grid" id="alertsGrid">
                     <!-- Được tạo bởi JavaScript -->
                 </div>
             </div>
 
         </section>
 
-        <!-- DEVICES PAGE -->
-        <section class="page" id="page-devices">
-            <div class="card">
-                <div class="card-header"><span class="card-label">🔌 Quản lý thiết bị</span></div>
-                <p class="placeholder-text">Trang quản lý thiết bị - Đang phát triển...</p>
-            </div>
-        </section>
-
         <!-- HISTORY PAGE -->
         <section class="page" id="page-history">
             <div class="card">
-                <div class="card-header"><span class="card-label">📊 Lịch sử dữ liệu</span></div>
-                <p class="placeholder-text">Trang lịch sử dữ liệu - Đang phát triển...</p>
+                <div class="card-header"><span class="card-label">📊 Lịch sử Đọc Nhiệt độ</span></div>
+                <div class="history-table-wrapper" style="overflow-x: auto; margin-top: 15px;">
+                    <table class="history-table" id="historyTable" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted);">
+                                <th style="padding: 12px;">Thời gian</th>
+                                <th style="padding: 12px;">Nhiệt độ (°C)</th>
+                                <th style="padding: 12px;">Trạng thái</th>
+                                <th style="padding: 12px;">So với ngưỡng Min/Max</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- JS tự nạp -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ALERTS PAGE -->
+        <section class="page" id="page-alerts">
+            <div class="card">
+                <div class="card-header"><span class="card-label">🔔 Danh sách Cảnh báo Quá nhiệt / Dưới ngưỡng</span></div>
+                <div id="fullAlertsList" style="margin-top: 15px;">
+                    <!-- JS nạp danh sách cảnh báo -->
+                </div>
             </div>
         </section>
 
         <!-- SETTINGS PAGE -->
         <section class="page" id="page-settings">
             <div class="card">
-                <div class="card-header"><span class="card-label">⚙️ Cài đặt kết nối</span></div>
+                <div class="card-header"><span class="card-label">⚙️ Cài đặt Cấu hình Nhiệt độ & Kết nối</span></div>
                 <div class="settings-form">
                     <div class="form-group">
                         <label for="deviceIp">Địa chỉ IP thiết bị ESP32</label>

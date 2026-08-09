@@ -1,12 +1,13 @@
 /**
- * CF IOT Dashboard - Progressive Web App
+ * CF IOT Temperature Monitor - Progressive Web App
  * File: app.js
- * Mô tả: Logic chính cho PWA Dashboard giám sát IoT
- * - Giả lập dữ liệu sensor (Nhiệt độ, Độ ẩm, Áp suất, WiFi RSSI)
- * - Vẽ biểu đồ Canvas nhiệt độ theo thời gian thực
- * - Gauge nhiệt độ bằng conic-gradient
- * - Điều hướng SPA (Single Page App)
- * - Đăng ký Service Worker cho PWA offline
+ * Mô tả: Logic tập trung 100% vào giám sát, phân tích & cảnh báo nhiệt độ
+ * - Cập nhật nhiệt độ thời gian thực
+ * - Giám sát ngưỡng Min (Arc Min) & Max (Arc Max)
+ * - Tự động phát hiện & ghi nhật ký sự cố Quá nhiệt / Dưới ngưỡng
+ * - Vẽ biểu đồ Canvas diễn biến nhiệt độ & đường ngưỡng
+ * - Thước đo Gauge conic-gradient
+ * - Bảng lịch sử & Nhật ký cảnh báo nhiệt độ
  */
 
 // ============================================================
@@ -29,43 +30,33 @@ const CONFIG = {
     devicePort: parseInt(localStorage.getItem('cf_iot_port')) || 80,
     updateInterval: parseInt(localStorage.getItem('cf_iot_interval')) || 2, // giây
 
-    // Giới hạn nhiệt độ gauge
-    tempMin: 0,
-    tempMax: 150,
+    // Giới hạn gauge nhiệt độ
+    tempMinGauge: 0,
+    tempMaxGauge: 150,
 
     // Số điểm dữ liệu tối đa trên biểu đồ
     maxDataPoints: 60,
 };
 
-// Dữ liệu sensor & phần cứng hiện tại
+// Dữ liệu nhiệt độ toàn cục
 const sensorData = {
     temperature: 0,
-    setTempMin: 30,     // Ngưỡng Min (Arc Min: 20~120°C)
-    setTempMax: 100,    // Ngưỡng Max (Arc Max: 40~140°C)
-    encoderCount: 0,    // Vị trí Rotary Encoder EC11
-    history: [],        // Mảng lưu lịch sử nhiệt độ { time, value }
+    setTempMin: 40,      // Ngưỡng Min cài đặt (Arc Min)
+    setTempMax: 110,     // Ngưỡng Max cài đặt (Arc Max)
+    history: [],         // Mảng lưu lịch sử nhiệt độ { time, value, status }
+    alertsLog: [],       // Mảng lưu danh sách sự cố cảnh báo
     tempMin: Infinity,
     tempMax: -Infinity,
     tempSum: 0,
     tempCount: 0,
 };
 
-// Danh sách thiết bị mẫu
-const devices = [
-    { id: 'esp32-main', name: 'ESP32-S3 Main', type: 'Bộ xử lý chính', status: 'online', ip: '192.168.1.100' },
-    { id: 'rp2040', name: 'RP2040 Sensor', type: 'Đọc cảm biến', status: 'online', ip: '192.168.1.101' },
-    { id: 'relay-board', name: 'Relay Board', type: '4 Kênh Relay', status: 'offline', ip: '192.168.1.102' },
-    { id: 'display', name: 'JC4827W543', type: 'Màn hình 4.3"', status: 'online', ip: '192.168.1.100' },
-];
-
-// ============================================================
-// 3. TIỆN ÍCH DOM
-// ============================================================
+// Tiện ích DOM
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 // ============================================================
-// 4. ĐỒNG HỒ THỜI GIAN THỰC
+// 3. ĐỒNG HỒ THỜI GIAN THỰC
 // ============================================================
 function updateClock() {
     const now = new Date();
@@ -77,7 +68,7 @@ setInterval(updateClock, 1000);
 updateClock();
 
 // ============================================================
-// 5. ĐIỀU HƯỚNG SPA (Single Page Application)
+// 4. ĐIỀU HƯỚNG SPA
 // ============================================================
 function initNavigation() {
     const navItems = $$('.nav-item');
@@ -88,43 +79,40 @@ function initNavigation() {
     const menuToggle = $('#menuToggle');
 
     const pageTitles = {
-        dashboard: 'Dashboard',
-        devices: 'Thiết bị',
-        history: 'Lịch sử',
-        settings: 'Cài đặt',
+        dashboard: 'Giám sát Nhiệt độ',
+        history: 'Lịch sử Nhiệt độ',
+        alerts: 'Danh sách Cảnh báo',
+        settings: 'Cài đặt Cấu hình',
     };
 
-    // Chuyển trang
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const targetPage = item.dataset.page;
 
-            // Cập nhật active nav
             navItems.forEach(n => n.classList.remove('active'));
             item.classList.add('active');
 
-            // Hiển thị trang tương ứng
             pages.forEach(p => p.classList.remove('active'));
             const page = $(`#page-${targetPage}`);
             if (page) page.classList.add('active');
 
-            // Cập nhật tiêu đề topbar
-            if (topbarTitle) topbarTitle.textContent = pageTitles[targetPage] || 'Dashboard';
+            if (topbarTitle) topbarTitle.textContent = pageTitles[targetPage] || 'Giám sát Nhiệt độ';
 
-            // Đóng sidebar trên mobile
             sidebar.classList.remove('open');
             overlay.classList.remove('active');
+
+            // Render lại các bảng khi chuyển trang
+            if (targetPage === 'history') renderHistoryTable();
+            if (targetPage === 'alerts') renderFullAlertsList();
         });
     });
 
-    // Toggle sidebar trên mobile
     menuToggle.addEventListener('click', () => {
         sidebar.classList.toggle('open');
         overlay.classList.toggle('active');
     });
 
-    // Đóng sidebar khi click overlay
     overlay.addEventListener('click', () => {
         sidebar.classList.remove('open');
         overlay.classList.remove('active');
@@ -132,32 +120,61 @@ function initNavigation() {
 }
 
 // ============================================================
-// 6. GIẢ LẬP DỮ LIỆU THỰC TẾ (Khớp với Firmware ESP32)
+// 5. GIẢ LẬP VÀ XỬ LÝ DỮ LIỆU NHIỆT ĐỘ
 // ============================================================
 function generateSimulatedData() {
-    // Nhiệt độ: dao động quanh 70~120°C (giống firmware ESP32 main.cpp)
-    const baseTemp = 95;
-    const variation = Math.sin(Date.now() / 10000) * 20 + (Math.random() - 0.5) * 5;
+    // Giả lập nhiệt độ dao động ngẫu nhiên 60 ~ 125°C
+    const baseTemp = 90;
+    const variation = Math.sin(Date.now() / 8000) * 25 + (Math.random() - 0.5) * 6;
     sensorData.temperature = parseFloat((baseTemp + variation).toFixed(1));
 
-    // Giả lập cài đặt Arc Min / Arc Max và Encoder EC11
-    sensorData.setTempMin = 30 + Math.round(Math.sin(Date.now() / 30000) * 5);
-    sensorData.setTempMax = 105 + Math.round(Math.cos(Date.now() / 30000) * 5);
-    sensorData.encoderCount = Math.round(Math.sin(Date.now() / 5000) * 15);
+    // Đánh giá trạng thái so với ngưỡng Min / Max
+    let status = 'normal';
+    let alertMsg = null;
 
-    // Lưu lịch sử
+    if (sensorData.temperature > sensorData.setTempMax) {
+        status = 'high';
+        alertMsg = `⚠️ CẢNH BÁO QUÁ NHIỆT: ${sensorData.temperature}°C vượt ngưỡng Max (${sensorData.setTempMax}°C)`;
+    } else if (sensorData.temperature < sensorData.setTempMin) {
+        status = 'low';
+        alertMsg = `❄️ CẢNH BÁO DƯỚI NGƯỠNG: ${sensorData.temperature}°C thấp hơn ngưỡng Min (${sensorData.setTempMin}°C)`;
+    }
+
     const now = new Date();
+
+    // Lưu vào lịch sử
     sensorData.history.push({
         time: now,
         value: sensorData.temperature,
+        status: status,
     });
 
-    // Giữ tối đa maxDataPoints điểm
     if (sensorData.history.length > CONFIG.maxDataPoints) {
         sensorData.history.shift();
     }
 
-    // Cập nhật min/max/avg
+    // Nếu có sự cố cảnh báo mới -> ghi nhận vào Nhật ký Cảnh báo
+    if (alertMsg) {
+        // Tránh trùng lặp cảnh báo quá dồn dập (ít nhất cách nhau 4 giây)
+        const lastAlert = sensorData.alertsLog[0];
+        if (!lastAlert || (now - lastAlert.time > 4000) || lastAlert.status !== status) {
+            sensorData.alertsLog.unshift({
+                id: Date.now(),
+                time: now,
+                temp: sensorData.temperature,
+                message: alertMsg,
+                status: status,
+            });
+
+            // Giữ tối đa 50 sự cố
+            if (sensorData.alertsLog.length > 50) sensorData.alertsLog.pop();
+
+            // Hiển thị Toast Cảnh báo
+            showNotification(alertMsg, status === 'high' ? 'error' : 'warning');
+        }
+    }
+
+    // Cập nhật thống kê Min / Max / Avg phiên
     sensorData.tempCount++;
     sensorData.tempSum += sensorData.temperature;
     if (sensorData.temperature < sensorData.tempMin) sensorData.tempMin = sensorData.temperature;
@@ -165,21 +182,25 @@ function generateSimulatedData() {
 }
 
 // ============================================================
-// 7. CẬP NHẬT GIAO DIỆN (DOM Updates)
+// 6. CẬP NHẬT GIAO DIỆN CHÍNH
 // ============================================================
 function updateUI() {
-    // ---- Thẻ thống kê ----
-    const tempEl = $('#tempValue');
-    const minEl = $('#setTempMinValue');
-    const maxEl = $('#setTempMaxValue');
-    const encEl = $('#encoderValue');
+    // ---- 1. Cập nhật Thẻ Thống kê ----
+    const tempValEl = $('#tempValue');
+    const tempAvgValEl = $('#tempAvgCardValue');
+    const minValEl = $('#setTempMinValue');
+    const maxValEl = $('#setTempMaxValue');
 
-    if (tempEl) tempEl.textContent = sensorData.temperature.toFixed(1);
-    if (minEl) minEl.textContent = sensorData.setTempMin;
-    if (maxEl) maxEl.textContent = sensorData.setTempMax;
-    if (encEl) encEl.textContent = (sensorData.encoderCount > 0 ? '+' : '') + sensorData.encoderCount;
+    if (tempValEl) tempValEl.textContent = sensorData.temperature.toFixed(1);
+    if (minValEl) minValEl.textContent = sensorData.setTempMin;
+    if (maxValEl) maxValEl.textContent = sensorData.setTempMax;
 
-    // Trend indicators
+    if (tempAvgValEl && sensorData.tempCount > 0) {
+        const avg = (sensorData.tempSum / sensorData.tempCount).toFixed(1);
+        tempAvgValEl.textContent = avg;
+    }
+
+    // Xu hướng nhiệt độ
     if (sensorData.history.length >= 2) {
         const prev = sensorData.history[sensorData.history.length - 2].value;
         const curr = sensorData.temperature;
@@ -187,10 +208,10 @@ function updateUI() {
         const tempTrend = $('#tempTrend');
         if (tempTrend) {
             if (diff > 0) {
-                tempTrend.textContent = `↑ ${diff}%`;
+                tempTrend.textContent = `↑ +${diff}%`;
                 tempTrend.className = 'card-trend card-trend--up';
             } else if (diff < 0) {
-                tempTrend.textContent = `↓ ${Math.abs(diff)}%`;
+                tempTrend.textContent = `↓ ${diff}%`;
                 tempTrend.className = 'card-trend card-trend--down';
             } else {
                 tempTrend.textContent = `→ 0.0%`;
@@ -199,23 +220,26 @@ function updateUI() {
         }
     }
 
-    // ---- Gauge nhiệt độ ----
+    // ---- 2. Cập nhật Gauge Nhiệt độ ----
     updateGauge(sensorData.temperature);
 
-    // ---- Min / Avg / Max ----
+    // ---- 3. Cập nhật Min / Avg / Max ở Gauge ----
     const minEl = $('#tempMin');
     const avgEl = $('#tempAvg');
     const maxEl = $('#tempMax');
-    if (minEl && sensorData.tempMin !== Infinity) minEl.textContent = sensorData.tempMin.toFixed(1) + '°';
-    if (maxEl && sensorData.tempMax !== -Infinity) maxEl.textContent = sensorData.tempMax.toFixed(1) + '°';
-    if (avgEl && sensorData.tempCount > 0) avgEl.textContent = (sensorData.tempSum / sensorData.tempCount).toFixed(1) + '°';
+    if (minEl && sensorData.tempMin !== Infinity) minEl.textContent = sensorData.tempMin.toFixed(1) + '°C';
+    if (maxEl && sensorData.tempMax !== -Infinity) maxEl.textContent = sensorData.tempMax.toFixed(1) + '°C';
+    if (avgEl && sensorData.tempCount > 0) avgEl.textContent = (sensorData.tempSum / sensorData.tempCount).toFixed(1) + '°C';
 
-    // ---- Biểu đồ ----
+    // ---- 4. Vẽ lại Biểu đồ ----
     drawChart();
+
+    // ---- 5. Cập nhật danh sách Cảnh báo nhanh trên Dashboard ----
+    renderAlertsGrid();
 }
 
 // ============================================================
-// 8. GAUGE NHIỆT ĐỘ (Conic Gradient)
+// 7. GAUGE NHIỆT ĐỘ (Conic Gradient)
 // ============================================================
 function updateGauge(value) {
     const gaugeEl = $('#tempGauge');
@@ -224,22 +248,18 @@ function updateGauge(value) {
 
     if (!gaugeEl || !fillEl) return;
 
-    // Tính phần trăm (0 ~ 100) dựa trên khoảng 0 ~ 150°C
-    const percent = Math.min(Math.max((value - CONFIG.tempMin) / (CONFIG.tempMax - CONFIG.tempMin) * 100, 0), 100);
+    const percent = Math.min(Math.max((value - CONFIG.tempMinGauge) / (CONFIG.tempMaxGauge - CONFIG.tempMinGauge) * 100, 0), 100);
 
-    // Xác định màu theo mức nhiệt độ
+    // Màu sắc chuyển đổi theo khoảng nhiệt độ
     let color;
-    if (value < 50) {
-        color = '#3b82f6'; // Xanh dương - Lạnh
-    } else if (value < 80) {
-        color = '#00d4aa'; // Teal - Bình thường
-    } else if (value < 110) {
-        color = '#f59e0b'; // Vàng - Ấm
+    if (value < sensorData.setTempMin) {
+        color = '#3b82f6'; // Xanh dương - Dưới ngưỡng Min
+    } else if (value <= sensorData.setTempMax) {
+        color = '#00d4aa'; // Teal - An toàn
     } else {
-        color = '#f43f5e'; // Đỏ - Nóng
+        color = '#f43f5e'; // Đỏ - Quá nhiệt
     }
 
-    // Cập nhật conic-gradient cho gauge (bán nguyệt 180°: từ 180deg đến 360deg)
     const angle = (percent / 100) * 180;
     fillEl.style.background = `conic-gradient(
         ${color} 0deg,
@@ -248,14 +268,13 @@ function updateGauge(value) {
         rgba(255,255,255,0.05) 180deg
     )`;
 
-    // Thêm CSS variable cho các hiệu ứng phụ
     gaugeEl.style.setProperty('--gauge-color', color);
 
     if (valueEl) valueEl.textContent = value.toFixed(1);
 }
 
 // ============================================================
-// 9. VẼ BIỂU ĐỒ CANVAS (Nhiệt độ theo thời gian)
+// 8. VẼ BIỂU ĐỒ DIỄN BIẾN NHIỆT ĐỘ (Canvas)
 // ============================================================
 function drawChart() {
     const canvas = $('#tempCanvas');
@@ -264,7 +283,6 @@ function drawChart() {
     const ctx = canvas.getContext('2d');
     const container = canvas.parentElement;
 
-    // Thiết lập kích thước canvas theo container (responsive)
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
     canvas.width = rect.width * dpr;
@@ -279,23 +297,19 @@ function drawChart() {
     const chartW = W - padding.left - padding.right;
     const chartH = H - padding.top - padding.bottom;
 
-    // Xóa canvas
     ctx.clearRect(0, 0, W, H);
 
     const data = sensorData.history;
     if (data.length < 2) return;
 
-    // Tìm min/max giá trị cho trục Y
     const values = data.map(d => d.value);
-    let yMin = Math.floor(Math.min(...values) - 5);
-    let yMax = Math.ceil(Math.max(...values) + 5);
-    if (yMax - yMin < 10) { yMin -= 5; yMax += 5; }
+    let yMin = Math.floor(Math.min(...values, sensorData.setTempMin) - 5);
+    let yMax = Math.ceil(Math.max(...values, sensorData.setTempMax) + 5);
 
-    // Hàm chuyển đổi tọa độ
     const xScale = (i) => padding.left + (i / (data.length - 1)) * chartW;
     const yScale = (v) => padding.top + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
 
-    // ---- Vẽ lưới ngang (Grid Lines) ----
+    // Grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
     ctx.lineWidth = 1;
     const gridLines = 5;
@@ -306,15 +320,36 @@ function drawChart() {
         ctx.lineTo(W - padding.right, y);
         ctx.stroke();
 
-        // Nhãn trục Y
         const val = yMax - (i / gridLines) * (yMax - yMin);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(val.toFixed(0) + '°', padding.left - 8, y + 4);
+        ctx.fillText(val.toFixed(0) + '°C', padding.left - 8, y + 4);
     }
 
-    // ---- Nhãn trục X (Thời gian) ----
+    // Đường ngưỡng Max (Đỏ nét đứt)
+    const ySetMax = yScale(sensorData.setTempMax);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, ySetMax);
+    ctx.lineTo(W - padding.right, ySetMax);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Đường ngưỡng Min (Xanh nét đứt)
+    const ySetMin = yScale(sensorData.setTempMin);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, ySetMin);
+    ctx.lineTo(W - padding.right, ySetMin);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Nhãn thời gian trục X
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
@@ -327,16 +362,14 @@ function drawChart() {
         ctx.fillText(label, x, H - padding.bottom + 20);
     }
 
-    // ---- Vẽ vùng tô gradient bên dưới đường (Area Fill) ----
+    // Area Fill
     const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
-    gradient.addColorStop(0, 'rgba(0, 212, 170, 0.3)');
-    gradient.addColorStop(0.5, 'rgba(0, 212, 170, 0.1)');
+    gradient.addColorStop(0, 'rgba(0, 212, 170, 0.35)');
     gradient.addColorStop(1, 'rgba(0, 212, 170, 0.0)');
 
     ctx.beginPath();
     ctx.moveTo(xScale(0), yScale(data[0].value));
     for (let i = 1; i < data.length; i++) {
-        // Đường cong Bézier mượt
         const x0 = xScale(i - 1);
         const x1 = xScale(i);
         const y0 = yScale(data[i - 1].value);
@@ -350,7 +383,7 @@ function drawChart() {
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    // ---- Vẽ đường chính (Line) ----
+    // Line
     ctx.beginPath();
     ctx.moveTo(xScale(0), yScale(data[0].value));
     for (let i = 1; i < data.length; i++) {
@@ -363,24 +396,14 @@ function drawChart() {
     }
     ctx.strokeStyle = '#00d4aa';
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#00d4aa';
-    ctx.shadowBlur = 8;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
-    // ---- Vẽ điểm cuối cùng (Current Point) ----
+    // Điểm tức thời cuối cùng
     const lastX = xScale(data.length - 1);
     const lastY = yScale(data[data.length - 1].value);
 
-    // Vòng sáng bên ngoài
     ctx.beginPath();
-    ctx.arc(lastX, lastY, 8, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 212, 170, 0.2)';
-    ctx.fill();
-
-    // Điểm chính
-    ctx.beginPath();
-    ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+    ctx.arc(lastX, lastY, 6, 0, Math.PI * 2);
     ctx.fillStyle = '#00d4aa';
     ctx.fill();
     ctx.strokeStyle = '#0a0e1a';
@@ -389,37 +412,94 @@ function drawChart() {
 }
 
 // ============================================================
-// 10. DANH SÁCH THIẾT BỊ (Device Grid)
+// 9. NHẬT KÝ & CẢNH BÁO NHIỆT ĐỘ
 // ============================================================
-function renderDevices() {
-    const grid = $('#devicesGrid');
-    const count = $('#deviceCount');
+function renderAlertsGrid() {
+    const grid = $('#alertsGrid');
+    const countEl = $('#alertCount');
     if (!grid) return;
 
-    grid.innerHTML = devices.map(device => `
-        <div class="device-item ${device.status}" id="device-${device.id}">
+    const recentAlerts = sensorData.alertsLog.slice(0, 4);
+
+    if (countEl) countEl.textContent = `${sensorData.alertsLog.length} cảnh báo`;
+
+    if (recentAlerts.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-muted);">
+                ✅ Nhiệt độ hoạt động bình thường trong dải an toàn (${sensorData.setTempMin}°C ~ ${sensorData.setTempMax}°C).
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = recentAlerts.map(alert => `
+        <div class="device-item ${alert.status === 'high' ? 'offline' : 'online'}" style="border-left: 4px solid ${alert.status === 'high' ? '#f43f5e' : '#3b82f6'};">
             <div class="device-header">
-                <span class="status-dot status-${device.status}"></span>
-                <strong class="device-name">${device.name}</strong>
+                <span class="status-dot ${alert.status === 'high' ? 'status-offline' : 'status-warning'}"></span>
+                <strong class="device-name">${alert.status === 'high' ? '🚨 Cảnh báo Quá nhiệt' : '❄️ Dưới ngưỡng Min'}</strong>
             </div>
             <div class="device-info">
-                <span class="device-type">${device.type}</span>
-                <span class="device-ip">${device.ip}</span>
+                <span class="device-type">Giá trị: <strong>${alert.temp}°C</strong></span>
+                <span class="device-ip">${alert.time.toLocaleTimeString('vi-VN')}</span>
             </div>
-            <div class="device-status-text">
-                ${device.status === 'online' ? '🟢 Đang hoạt động' : '🔴 Mất kết nối'}
+            <div class="device-status-text" style="font-size: 0.8rem; margin-top: 4px;">
+                ${alert.message}
             </div>
         </div>
     `).join('');
+}
 
-    if (count) {
-        const onlineCount = devices.filter(d => d.status === 'online').length;
-        count.textContent = `${onlineCount}/${devices.length} thiết bị online`;
+function renderHistoryTable() {
+    const tbody = $('#historyTableBody');
+    if (!tbody) return;
+
+    const historyReversed = [...sensorData.history].reverse().slice(0, 30);
+
+    tbody.innerHTML = historyReversed.map(item => {
+        let statusBadge = `<span style="color: #00d4aa; font-weight: 500;">Bình thường</span>`;
+        let comp = `Trong dải (${sensorData.setTempMin}°C - ${sensorData.setTempMax}°C)`;
+
+        if (item.value > sensorData.setTempMax) {
+            statusBadge = `<span style="color: #f43f5e; font-weight: 600;">⚠️ Quá nhiệt</span>`;
+            comp = `<span style="color: #f43f5e;">+${(item.value - sensorData.setTempMax).toFixed(1)}°C so với Max</span>`;
+        } else if (item.value < sensorData.setTempMin) {
+            statusBadge = `<span style="color: #3b82f6; font-weight: 600;">❄️ Dưới Min</span>`;
+            comp = `<span style="color: #3b82f6;">-${(sensorData.setTempMin - item.value).toFixed(1)}°C so với Min</span>`;
+        }
+
+        return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 12px; color: var(--text-muted);">${item.time.toLocaleTimeString('vi-VN')}</td>
+                <td style="padding: 12px; font-weight: 600; font-size: 1.05rem;">${item.value}°C</td>
+                <td style="padding: 12px;">${statusBadge}</td>
+                <td style="padding: 12px; font-size: 0.85rem;">${comp}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderFullAlertsList() {
+    const container = $('#fullAlertsList');
+    if (!container) return;
+
+    if (sensorData.alertsLog.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">Chưa phát hiện sự cố nhiệt độ nào.</p>`;
+        return;
     }
+
+    container.innerHTML = sensorData.alertsLog.map(alert => `
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid ${alert.status === 'high' ? '#f43f5e' : '#3b82f6'};">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <strong style="color: ${alert.status === 'high' ? '#f43f5e' : '#3b82f6'};">${alert.status === 'high' ? '🚨 CẢNH BÁO QUÁ NHIỆT' : '❄️ DƯỚI NGƯỠNG AN TOÀN'}</strong>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">${alert.time.toLocaleString('vi-VN')}</span>
+            </div>
+            <p style="margin: 0; font-size: 0.9rem;">${alert.message}</p>
+        </div>
+    `).join('');
 }
 
 // ============================================================
-// 11. CÀI ĐẶT KẾT NỐI (Settings Page)
+// 10. CÀI ĐẶT CẤU HÌNH
 // ============================================================
 function initSettings() {
     const ipInput = $('#deviceIp');
@@ -428,12 +508,10 @@ function initSettings() {
     const saveBtn = $('#btnSaveSettings');
     const testBtn = $('#btnTestConnection');
 
-    // Load giá trị đã lưu
     if (ipInput) ipInput.value = CONFIG.deviceIp;
     if (portInput) portInput.value = CONFIG.devicePort;
     if (intervalInput) intervalInput.value = CONFIG.updateInterval;
 
-    // Lưu cài đặt
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             CONFIG.deviceIp = ipInput.value.trim();
@@ -444,18 +522,15 @@ function initSettings() {
             localStorage.setItem('cf_iot_port', CONFIG.devicePort.toString());
             localStorage.setItem('cf_iot_interval', CONFIG.updateInterval.toString());
 
-            showNotification('✅ Đã lưu cài đặt thành công!', 'success');
-
-            // Khởi động lại vòng lặp cập nhật với interval mới
+            showNotification('✅ Đã lưu cấu hình giám sát thành công!', 'success');
             restartUpdateLoop();
         });
     }
 
-    // Kiểm tra kết nối
     if (testBtn) {
         testBtn.addEventListener('click', async () => {
             if (!CONFIG.deviceIp) {
-                showNotification('⚠️ Vui lòng nhập địa chỉ IP thiết bị!', 'warning');
+                showNotification('⚠️ Vui lòng nhập địa chỉ IP thiết bị ESP32!', 'warning');
                 return;
             }
 
@@ -467,16 +542,13 @@ function initSettings() {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 5000);
 
-                const response = await fetch(url, {
-                    signal: controller.signal,
-                    mode: 'no-cors',
-                });
+                await fetch(url, { signal: controller.signal, mode: 'no-cors' });
                 clearTimeout(timeout);
 
-                showNotification('✅ Kết nối thành công tới thiết bị!', 'success');
+                showNotification('✅ Kết nối thành công tới ESP32!', 'success');
                 updateConnectionStatus(true);
             } catch (err) {
-                showNotification('❌ Không thể kết nối tới thiết bị! Kiểm tra IP và Port.', 'error');
+                showNotification('❌ Không thể kết nối tới thiết bị!', 'error');
                 updateConnectionStatus(false);
             } finally {
                 testBtn.disabled = false;
@@ -486,9 +558,6 @@ function initSettings() {
     }
 }
 
-// ============================================================
-// 12. TRẠNG THÁI KẾT NỐI (Connection Status)
-// ============================================================
 function updateConnectionStatus(connected) {
     const statusEl = $('#connectionStatus');
     if (!statusEl) return;
@@ -505,11 +574,7 @@ function updateConnectionStatus(connected) {
     }
 }
 
-// ============================================================
-// 13. THÔNG BÁO (Toast Notification)
-// ============================================================
 function showNotification(message, type = 'info') {
-    // Xóa thông báo cũ nếu có
     const existing = $('.toast-notification');
     if (existing) existing.remove();
 
@@ -517,7 +582,6 @@ function showNotification(message, type = 'info') {
     toast.className = `toast-notification toast-${type}`;
     toast.textContent = message;
 
-    // Style inline cho toast
     Object.assign(toast.style, {
         position: 'fixed',
         bottom: '24px',
@@ -536,18 +600,16 @@ function showNotification(message, type = 'info') {
         maxWidth: '400px',
     });
 
-    // Màu nền theo loại
     const colors = {
-        success: 'rgba(0, 212, 170, 0.9)',
-        error: 'rgba(244, 63, 94, 0.9)',
-        warning: 'rgba(245, 158, 11, 0.9)',
-        info: 'rgba(59, 130, 246, 0.9)',
+        success: 'rgba(0, 212, 170, 0.95)',
+        error: 'rgba(244, 63, 94, 0.95)',
+        warning: 'rgba(245, 158, 11, 0.95)',
+        info: 'rgba(59, 130, 246, 0.95)',
     };
     toast.style.background = colors[type] || colors.info;
 
     document.body.appendChild(toast);
 
-    // Tự động ẩn sau 3 giây
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(20px)';
@@ -556,17 +618,13 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// ============================================================
-// 14. VÒNG LẶP CẬP NHẬT CHÍNH (Main Update Loop)
-// ============================================================
+// Vòng lặp chính
 let updateTimer = null;
 
 function startUpdateLoop() {
-    // Chạy lần đầu ngay lập tức
     generateSimulatedData();
     updateUI();
 
-    // Lặp theo interval
     updateTimer = setInterval(() => {
         generateSimulatedData();
         updateUI();
@@ -578,20 +636,7 @@ function restartUpdateLoop() {
     startUpdateLoop();
 }
 
-// ============================================================
-// 15. XỬ LÝ RESPONSIVE (Resize Canvas)
-// ============================================================
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        drawChart();
-    }, 200);
-});
-
-// ============================================================
-// 16. CHART CONTROLS (1H / 6H / 24H buttons)
-// ============================================================
+// Chart Controls
 function initChartControls() {
     const buttons = $$('.chart-btn');
     buttons.forEach(btn => {
@@ -601,46 +646,26 @@ function initChartControls() {
 
             const range = btn.dataset.range;
             switch (range) {
-                case '1h':
-                    CONFIG.maxDataPoints = 60;
-                    break;
-                case '6h':
-                    CONFIG.maxDataPoints = 180;
-                    break;
-                case '24h':
-                    CONFIG.maxDataPoints = 720;
-                    break;
+                case '1h': CONFIG.maxDataPoints = 60; break;
+                case '6h': CONFIG.maxDataPoints = 180; break;
+                case '24h': CONFIG.maxDataPoints = 720; break;
             }
         });
     });
 }
 
-// ============================================================
-// 17. KHỞI TẠO ỨNG DỤNG (App Init)
-// ============================================================
+// Init App
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 CF IOT Dashboard - Khởi tạo...');
+    console.log('🚀 CF Temp Monitor - Khởi tạo...');
 
-    // Khởi tạo các module
     initNavigation();
     initSettings();
     initChartControls();
-    renderDevices();
 
-    // Bắt đầu vòng lặp dữ liệu
     startUpdateLoop();
 
-    // Hiệu ứng fade-in cho cards
-    const cards = $$('.card');
-    cards.forEach((card, i) => {
-        card.style.animationDelay = `${i * 0.1}s`;
-    });
-
-    // Cập nhật trạng thái kết nối giả lập
     setTimeout(() => {
         updateConnectionStatus(true);
-        showNotification('🚀 Dashboard đã sẵn sàng! (Chế độ giả lập)', 'info');
-    }, 1500);
-
-    console.log('✅ CF IOT Dashboard - Sẵn sàng!');
+        showNotification('🌡️ Ứng dụng Giám sát Nhiệt độ đã sẵn sàng!', 'info');
+    }, 1200);
 });
