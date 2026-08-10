@@ -951,3 +951,48 @@ input:checked + .slider:before {
     grid-column: span 4;
   }
 }
+
+/* ==========================================================================
+   MOBILE OPTIMIZATION (MAX-WIDTH: 767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Fix Topbar Title overlap */
+  .topbar-title h1 {
+    font-size: 1.15rem;
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+  .topbar {
+    padding: 0 10px;
+    gap: 10px;
+  }
+  
+  /* Fix Chart Header Buttons wrap */
+  .chart-card .card-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .chart-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Fix LVGL Gauge squeezing */
+  .lvgl-display-container {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 20px;
+    padding: 20px 5px !important;
+  }
+  .lvgl-center-box {
+    order: -1; /* Move center temp to top */
+    flex: 1 1 100% !important;
+    margin-bottom: 5px;
+  }
+  .lvgl-center-box #lvglMainTemp {
+    font-size: 4.5rem !important;
+  }
+  .lvgl-arc-box {
+    flex: 0 0 45% !important;
+  }
+}
