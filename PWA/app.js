@@ -55,17 +55,7 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 // ============================================================
-// 3. ĐỒNG HỒ THỜI GIAN THỰC
-// ============================================================
-function updateClock() {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const el = $('#topbarTime');
-    if (el) el.textContent = timeStr;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
+// 3. (ĐÃ ẨN ĐỒNG HỒ THEO YÊU CẦU)
 // ============================================================
 // 4. ĐIỀU HƯỚNG SPA
 // ============================================================
