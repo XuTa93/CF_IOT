@@ -303,7 +303,7 @@ button, input, select, textarea {
    ========================================================================== */
 .sidebar {
   position: fixed;
-  top: var(--topbar-height);
+  top: 0;
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
@@ -312,12 +312,13 @@ button, input, select, textarea {
   -webkit-backdrop-filter: var(--backdrop-blur-heavy);
   border-right: 1px solid var(--border-color);
   padding: var(--spacing-lg) var(--spacing-md);
-  z-index: 90;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: var(--spacing-md);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateX(-100%); /* Trang thai an mac dinh tren mobile */
+  transform: translateX(-100%);
 }
 
 .sidebar.active {
@@ -325,41 +326,47 @@ button, input, select, textarea {
   box-shadow: var(--shadow-lg);
 }
 
-.nav-list {
+.sidebar-header {
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .nav-item {
-  width: 100%;
-}
-
-.nav-link {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: 0.75rem var(--spacing-md);
+  padding: 0.8rem var(--spacing-md);
   border-radius: var(--border-radius-md);
   color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.925rem;
   transition: var(--transition-smooth);
-  position: relative;
+  text-decoration: none;
 }
 
-.nav-link:hover {
+.nav-item:hover {
   color: var(--primary);
   background: rgba(0, 212, 170, 0.08);
   transform: translateX(4px);
 }
 
-.nav-link.active {
+.nav-item.active {
   color: var(--primary);
   background: linear-gradient(90deg, rgba(0, 212, 170, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
   border-left: 3px solid var(--primary);
   box-shadow: inset 0 0 10px rgba(0, 212, 170, 0.1);
   font-weight: 600;
+}
+
+.sidebar-footer {
+  margin-top: auto;
 }
 
 .nav-icon {
