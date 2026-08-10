@@ -242,37 +242,37 @@
         <!-- SETTINGS PAGE -->
         <section class="page" id="page-settings">
             <div class="card">
-                <div class="card-header"><span class="card-label">⚙️ Cấu hình Kết nối MQTT Broker</span></div>
+                <div class="card-header"><span class="card-label">⚙️ Cài đặt Máy chủ Nhận dữ liệu</span></div>
                 <div class="settings-form">
                     <div class="form-group">
                         <label for="connectionMode">Nguồn dữ liệu Nhiệt độ</label>
                         <select id="connectionMode" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);">
-                            <option value="mqtt">📡 MQTT Broker (WebSockets)</option>
-                            <option value="simulated">🧪 Mô phỏng (Simulated Data)</option>
+                            <option value="mqtt">📡 Máy chủ Thực tế (MQTT)</option>
+                            <option value="simulated">🧪 Dữ liệu Mô phỏng (Chạy thử)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="mqttHost">Địa chỉ MQTT Broker Host (WebSocket)</label>
+                        <label for="mqttHost">Địa chỉ máy chủ (Host)</label>
                         <input type="text" id="mqttHost" placeholder="Ví dụ: broker.emqx.io hoặc 192.168.1.100" value="broker.emqx.io">
                     </div>
                     <div class="form-group">
-                        <label for="mqttPort">Cổng WebSocket Port (WS/WSS)</label>
-                        <input type="number" id="mqttPort" placeholder="8083 (WS) hoặc 8084 (WSS)" value="8083">
+                        <label for="mqttPort">Cổng kết nối (Port)</label>
+                        <input type="number" id="mqttPort" placeholder="8083 hoặc 8084" value="8083">
                     </div>
                     <div class="form-group">
-                        <label for="mqttTopic">Topic Đăng ký (Subscribe Topic)</label>
+                        <label for="mqttTopic">Chủ đề nhận dữ liệu (Topic)</label>
                         <input type="text" id="mqttTopic" placeholder="Ví dụ: cf_iot/temperature" value="cf_iot/temperature">
                     </div>
                     <div class="form-group">
-                        <label for="mqttUser">Username (Tùy chọn)</label>
-                        <input type="text" id="mqttUser" placeholder="Tên đăng nhập MQTT if required" value="">
+                        <label for="mqttUser">Tên đăng nhập (Tùy chọn)</label>
+                        <input type="text" id="mqttUser" placeholder="Tên đăng nhập (nếu có)" value="">
                     </div>
                     <div class="form-group">
-                        <label for="mqttPass">Password (Tùy chọn)</label>
-                        <input type="password" id="mqttPass" placeholder="Mật khẩu MQTT if required" value="">
+                        <label for="mqttPass">Mật khẩu (Tùy chọn)</label>
+                        <input type="password" id="mqttPass" placeholder="Mật khẩu (nếu có)" value="">
                     </div>
-                    <button class="btn btn-primary" id="btnSaveSettings">💾 Lưu cấu hình & Kết nối MQTT</button>
-                    <button class="btn btn-secondary" id="btnTestConnection">📡 Đổ dữ liệu mẫu lên MQTT</button>
+                    <button class="btn btn-primary" id="btnSaveSettings">💾 Lưu Cài đặt & Kết nối</button>
+                    <button class="btn btn-secondary" id="btnTestConnection">📡 Gửi dữ liệu thử nghiệm</button>
                 </div>
             </div>
         </section>
