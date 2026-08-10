@@ -88,7 +88,7 @@ function initNavigation() {
 
             if (topbarTitle) topbarTitle.textContent = pageTitles[targetPage] || 'Giám sát Nhiệt độ MQTT';
 
-            sidebar.classList.remove('open');
+            sidebar.classList.remove('active');
             overlay.classList.remove('active');
 
             if (targetPage === 'history') renderHistoryTable();
@@ -97,12 +97,12 @@ function initNavigation() {
     });
 
     menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
+        sidebar.classList.toggle('active');
         overlay.classList.toggle('active');
     });
 
     overlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
+        sidebar.classList.remove('active');
         overlay.classList.remove('active');
     });
 }
