@@ -230,6 +230,16 @@ button, input, select, textarea {
   transition: var(--transition-smooth);
 }
 
+/* SPA Page Navigation */
+.page {
+  display: none;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.page.active {
+  display: block;
+}
+
 /* Dashboard Responsive Grid */
 .dashboard-grid {
   display: grid;
