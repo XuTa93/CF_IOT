@@ -995,4 +995,87 @@ input:checked + .slider:before {
   .lvgl-arc-box {
     flex: 0 0 45% !important;
   }
+
+  /* --- APP-LIKE NAVIGATION OVERHAUL --- */
+  .menu-toggle {
+    display: none !important; /* Hide hamburger menu on mobile */
+  }
+  .sidebar, .sidebar-overlay {
+    display: none !important; /* Hide sidebar completely on mobile */
+  }
+  .topbar-title {
+    width: 100%;
+    text-align: center; /* Center title like iOS/Android */
+  }
+  .topbar-title h1 {
+    margin-left: 0;
+  }
+  .main-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Make space for bottom nav */
+  }
+  .bottom-nav {
+    display: flex !important;
+  }
+}
+
+/* ==========================================================================
+   APP-LIKE BOTTOM NAVIGATION BAR (HIDDEN ON DESKTOP)
+   ========================================================================== */
+.bottom-nav {
+  display: none; /* Hidden on desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(65px + env(safe-area-inset-bottom));
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: var(--backdrop-blur-heavy);
+  -webkit-backdrop-filter: var(--backdrop-blur-heavy);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 9999;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 25%;
+  height: 100%;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 500;
+  gap: 4px;
+  -webkit-tap-highlight-color: transparent; /* Remove blue flash on tap */
+  user-select: none; /* Prevent text selection */
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.bottom-nav-item svg {
+  transition: transform 0.2s ease, stroke 0.2s ease;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-item.active svg {
+  stroke: var(--primary);
+  transform: translateY(-2px);
+  filter: drop-shadow(0 2px 8px rgba(0, 212, 170, 0.4));
+}
+
+/* TOUCH OPTIMIZATIONS FOR BUTTONS */
+button, .chart-btn, .nav-item {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }

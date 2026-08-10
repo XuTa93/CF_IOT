@@ -60,7 +60,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // 4. ĐIỀU HƯỚNG SPA
 // ============================================================
 function initNavigation() {
-    const navItems = $$('.nav-item');
     const pages = $$('.page');
     const topbarTitle = $('.topbar-title h1');
     const sidebar = $('#sidebar');
@@ -74,13 +73,21 @@ function initNavigation() {
         settings: 'Cấu hình MQTT Broker',
     };
 
+    const navItems = $$('.nav-item, .bottom-nav-item');
+
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const targetPage = item.dataset.page;
 
-            navItems.forEach(n => n.classList.remove('active'));
-            item.classList.add('active');
+            // Update active state on ALL nav links with this page target
+            navItems.forEach(n => {
+                if (n.dataset.page === targetPage) {
+                    n.classList.add('active');
+                } else {
+                    n.classList.remove('active');
+                }
+            });
 
             pages.forEach(p => p.classList.remove('active'));
             const page = $(`#page-${targetPage}`);
@@ -88,8 +95,8 @@ function initNavigation() {
 
             if (topbarTitle) topbarTitle.textContent = pageTitles[targetPage] || 'Giám sát Nhiệt độ MQTT';
 
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
+            if (sidebar) sidebar.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
 
             if (targetPage === 'history') renderHistoryTable();
             if (targetPage === 'alerts') renderFullAlertsList();
