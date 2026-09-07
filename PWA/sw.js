@@ -4,7 +4,7 @@
  */
 
 // Tên bộ nhớ đệm (Cache Storage)
-const CACHE_NAME = 'cf-iot-v1';
+const CACHE_NAME = 'cf-iot-v9';
 
 // Danh sách các tài nguyên tĩnh cần lưu cache khi cài đặt Service Worker
 const ASSETS_TO_CACHE = [
@@ -152,10 +152,71 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  //Phân chia chiến lược caching dựa theo loại URL (API hay static assets)
+//Phân chia chiến lược caching dựa theo loại URL (API hay static assets)
   if (isApiRequest(request.url)) {
     event.respondWith(networkFirstStrategy(request));
   } else {
     event.respondWith(cacheFirstStrategy(request));
   }
+});
+
+/**
+ * Xử lý sự kiện Push Notification từ Backend (Web Push API)
+ */
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Nhận được Push Notification:', event);
+  
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      const title = payload.title || 'CẢNH BÁO IOT';
+      const options = {
+        body: payload.body || 'Bạn có thông báo mới.',
+        icon: payload.icon || 'icons/icon-512.jpg',
+        badge: 'icons/icon-512.jpg',
+        vibrate: [500, 200, 500, 200, 500],
+        tag: 'cf-temp-alert',
+        renotify: true,
+        requireInteraction: true // Giữ thông báo trên màn hình cho đến khi người dùng tắt
+      };
+      
+      event.waitUntil(
+        self.registration.showNotification(title, options)
+      );
+    } catch (e) {
+      console.error('Lỗi khi parse Push Data:', e);
+      // Fallback
+      event.waitUntil(
+        self.registration.showNotification('CẢNH BÁO IOT', {
+          body: event.data.text(),
+          vibrate: [500, 200, 500]
+        })
+      );
+    }
+  }
+});
+
+/**
+ * Xử lý sự kiện khi người dùng click vào thông báo đẩy
+ */
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Người dùng click vào thông báo.');
+  event.notification.close();
+  
+  // Mở lại trang Dashboard nếu nó chưa mở
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Nếu đã có tab mở, focus vào đó
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Nếu chưa có, mở tab mới
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
 });

@@ -86,19 +86,7 @@
     <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
 
-        <!-- TOP BAR -->
-        <header class="topbar">
-            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12"/>
-                    <line x1="3" y1="6" x2="21" y2="6"/>
-                    <line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-            </button>
-            <div class="topbar-title">
-                <h1>Giám sát Nhiệt độ</h1>
-            </div>
-        </header>
+
 
         <!-- DASHBOARD PAGE -->
         <section class="page active" id="page-dashboard">
@@ -139,7 +127,7 @@
                                     <!-- Nút tròn chấm đầu -->
                                     <circle id="lvglArcMinDot" cx="50" cy="12" r="5" fill="#60a5fa" stroke="#ffffff" stroke-width="2"/>
                                 </svg>
-                                <span id="lvglArcMinText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #60a5fa; font-family: sans-serif;">30</span>
+                                <span id="lvglArcMinText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #60a5fa; font-family: sans-serif; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(96,165,250,0.5); text-underline-offset: 4px;" title="Nhấn để đổi ngưỡng">30</span>
                             </div>
                             <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">NGƯỠNG THẤP</span>
                         </div>
@@ -163,7 +151,7 @@
                                     <!-- Nút tròn chấm đầu -->
                                     <circle id="lvglArcMaxDot" cx="80" cy="80" r="5" fill="#a3e635" stroke="#ffffff" stroke-width="2"/>
                                 </svg>
-                                <span id="lvglArcMaxText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #a3e635; font-family: sans-serif;">100</span>
+                                <span id="lvglArcMaxText" style="position: absolute; font-size: 1.6rem; font-weight: 700; color: #a3e635; font-family: sans-serif; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(163,230,53,0.5); text-underline-offset: 4px;" title="Nhấn để đổi ngưỡng">100</span>
                             </div>
                             <span style="font-size: 0.75rem; color: #9ca3af; margin-top: 6px; font-weight: 600; letter-spacing: 0.5px;">NGƯỠNG CAO</span>
                         </div>
@@ -256,7 +244,10 @@
                         <input type="password" id="mqttPass" placeholder="Mật khẩu (nếu có)" value="">
                     </div>
                     <button class="btn btn-primary" id="btnSaveSettings">💾 Lưu Cài đặt & Kết nối</button>
+
                     <button class="btn btn-secondary" id="btnTestConnection">📡 Gửi dữ liệu thử nghiệm</button>
+                    <button class="btn" id="btnQuickSim" style="margin-top: 10px; background: rgba(0, 212, 170, 0.2); border: 1px solid #00d4aa; color: #00d4aa; width: 100%;">🧪 Kích hoạt Chế độ Mô phỏng Ngay</button>
+                    <button class="btn" id="btnEnableNotifications" style="margin-top: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #60a5fa; width: 100%;">🔔 Bật Thông báo Cảnh báo về Điện thoại</button>
                 </div>
             </div>
         </section>

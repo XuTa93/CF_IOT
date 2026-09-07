@@ -10,6 +10,7 @@
 #include <TAMC_GT911.h>
 #include "ui/ui.h"
 #include "wifi_gui.h"
+#include "ModbusMaster.h"
 
 // Khai báo Font 85px cho LVGL
 LV_FONT_DECLARE(ui_font_Font85);
@@ -47,32 +48,116 @@ Arduino_GFX *gfx = new Arduino_Canvas(480 /* width */, 272 /* height */, panel);
 
 TAMC_GT911 ts = TAMC_GT911(TOUCH_SDA, TOUCH_SCL, TOUCH_INT, TOUCH_RST, 480, 272);
 
-// Cấu hình UART1 kết nối RP2040
+// Cấu hình UART1 (Modbus RTU Master Poll) kết nối Modbus Slave (ModSim32 trên PC qua COM3)
 #define UART1_TX_PIN 17
 #define UART1_RX_PIN 18
 #define UART1_BAUD   115200
 
-// Cấu hình Rotary Encoder EC11 (Connector 4 chân: IO6, IO7, IO15, IO16)
-#define EC11_CLK_PIN  6   // Chân CLK (Phase A)
-#define EC11_DT_PIN   7   // Chân DT (Phase B)
-#define EC11_SW_PIN   15  // Chân SW (Nút nhấn)
-#define EC11_GND_PIN  16  // Chân GND mềm (Cấu hình OUTPUT 0V)
+// Khởi tạo Modbus RTU Master (Mặc định đọc Slave ID = 1, chu kỳ Poll 500ms)
+static ModbusMaster modbus(1);
 
-static volatile int32_t encoder_count = 0;
-static int last_clk_state = HIGH;
+// Con trỏ chuỗi dữ liệu biểu đồ Chart1
+static lv_chart_series_t * ui_chart_series = NULL;
 
-void IRAM_ATTR ec11_isr() {
-    int clk_val = digitalRead(EC11_CLK_PIN);
-    int dt_val = digitalRead(EC11_DT_PIN);
-    
-    if (clk_val != last_clk_state && clk_val == LOW) {
-        if (dt_val != clk_val) {
-            encoder_count++; // Xoay theo chiều kim đồng hồ (CW)
-        } else {
-            encoder_count--; // Xoay ngược chiều kim đồng hồ (CCW)
+// Callback khi Modbus Master đọc dữ liệu FC03 thành công từ Slave (ModSim32 trên PC qua COM3)
+void on_modbus_data_received(uint16_t start_addr, const int16_t *data, uint16_t count) {
+    if (count > 0) {
+        int16_t raw_temp = data[0]; // Thanh ghi 40001 (Offset 0): Nhiệt độ đo tức thời x10 (ví dụ 854 = 85.4°C)
+        float temp_c = raw_temp / 10.0f;
+
+        // 1. Cập nhật số hiển thị to ở giữa màn hình (ui_Temperture1)
+        if (ui_Temperture1) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.1f", temp_c);
+            lv_label_set_text(ui_Temperture1, buf);
+        }
+
+        // 2. Nạp điểm nhiệt độ từ Modbus vào biểu đồ Chart1
+        if (ui_Chart1 && ui_chart_series) {
+            int16_t chart_val = (int16_t)roundf(temp_c);
+            lv_chart_set_next_value(ui_Chart1, ui_chart_series, chart_val);
+            lv_chart_refresh(ui_Chart1);
+        }
+
+        // 3. Tự động kiểm tra cảnh báo ngưỡng Min / Max
+        int min_val = ui_ArcMin ? lv_arc_get_value(ui_ArcMin) : 50;
+        int max_val = ui_ArcMax ? lv_arc_get_value(ui_ArcMax) : 100;
+        int16_t alarm = 0;
+        if (temp_c > max_val) alarm = 2; // Quá nhiệt
+        else if (temp_c < min_val) alarm = 1; // Dưới ngưỡng
+
+        static float last_logged_temp = -999.0f;
+        if (fabsf(temp_c - last_logged_temp) > 0.05f) {
+            Serial.printf("[Modbus Poll -> LCD] Đọc từ PC ModSim32: %.1f°C (Raw: %d, Alarm: %d)\n", temp_c, raw_temp, alarm);
+            last_logged_temp = temp_c;
         }
     }
-    last_clk_state = clk_val;
+}
+
+// Cấu hình Rotary Encoder EC11 Số 1 (Module 4 chân: SW=46, GND=9, PhaseA=14, PhaseB=5) - Cổng P2 (Chỉnh Min Temp)
+#define EC11_SW_PIN   46  // Chân 1: Nút nhấn (SW) - IO46
+#define EC11_GND_PIN  9   // Chân 2: Common Ground (0V) - IO9
+#define EC11_CLK_PIN  14  // Chân 3: Phase A - IO14 (Đảo với DT để xoay phải là TĂNG)
+#define EC11_DT_PIN   5   // Chân 4: Phase B - IO5
+
+static volatile int32_t encoder_count = 0;
+static volatile uint8_t enc_prevState = 0;
+
+// Thuật toán giải mã Encoder EC11 #1 máy trạng thái (State Machine) có lọc chống dội (Debounce)
+void IRAM_ATTR ec11_isr() {
+    static uint32_t last_isr_time = 0;
+    uint32_t now = micros();
+    if (now - last_isr_time < 800) return; // Lọc bỏ xung dội cơ học dưới 800us giúp xoay mịn, đầm chắc
+    last_isr_time = now;
+
+    uint8_t currState = (digitalRead(EC11_CLK_PIN) << 1) | digitalRead(EC11_DT_PIN);
+    if (currState != enc_prevState) {
+        if ((enc_prevState == 0b00 && currState == 0b01) || 
+            (enc_prevState == 0b01 && currState == 0b11) ||
+            (enc_prevState == 0b11 && currState == 0b10) || 
+            (enc_prevState == 0b10 && currState == 0b00)) {
+            encoder_count++; // Xoay theo chiều kim đồng hồ (CW)
+        } else if ((enc_prevState == 0b00 && currState == 0b10) || 
+                   (enc_prevState == 0b10 && currState == 0b11) ||
+                   (enc_prevState == 0b11 && currState == 0b01) || 
+                   (enc_prevState == 0b01 && currState == 0b00)) {
+            encoder_count--; // Xoay ngược chiều kim đồng hồ (CCW)
+        }
+        enc_prevState = currState;
+    }
+}
+
+// Cấu hình Rotary Encoder EC11 Số 2 (Module 4 chân: SW=6, GND=7, PhaseA=15, PhaseB=16) - Cổng P3 (Chỉnh Max Temp)
+#define EC11_2_SW_PIN   6   // Chân 1: Nút nhấn (SW) - IO6
+#define EC11_2_GND_PIN  7   // Chân 2: Common Ground (0V) - IO7
+#define EC11_2_CLK_PIN  15  // Chân 3: Phase A - IO15
+#define EC11_2_DT_PIN   16  // Chân 4: Phase B - IO16
+
+static volatile int32_t encoder2_count = 0;
+static volatile uint8_t enc2_prevState = 0;
+
+// Thuật toán giải mã Encoder EC11 #2 máy trạng thái (State Machine) có lọc chống dội (Debounce)
+void IRAM_ATTR ec11_2_isr() {
+    static uint32_t last_isr_time2 = 0;
+    uint32_t now = micros();
+    if (now - last_isr_time2 < 800) return; // Lọc bỏ xung dội cơ học dưới 800us
+    last_isr_time2 = now;
+
+    uint8_t currState = (digitalRead(EC11_2_CLK_PIN) << 1) | digitalRead(EC11_2_DT_PIN);
+    if (currState != enc2_prevState) {
+        if ((enc2_prevState == 0b00 && currState == 0b01) || 
+            (enc2_prevState == 0b01 && currState == 0b11) ||
+            (enc2_prevState == 0b11 && currState == 0b10) || 
+            (enc2_prevState == 0b10 && currState == 0b00)) {
+            encoder2_count++; // Xoay theo chiều kim đồng hồ (CW)
+        } else if ((enc2_prevState == 0b00 && currState == 0b10) || 
+                   (enc2_prevState == 0b10 && currState == 0b11) ||
+                   (enc2_prevState == 0b11 && currState == 0b01) || 
+                   (enc2_prevState == 0b01 && currState == 0b00)) {
+            encoder2_count--; // Xoay ngược chiều kim đồng hồ (CCW)
+        }
+        enc2_prevState = currState;
+    }
 }
 
 /* Callback hiển thị LVGL 8.3 (Hỗ trợ 32-bit từ SquareLine Studio) */
@@ -177,31 +262,6 @@ static void arc_max_cb(lv_event_t * e) {
         lv_label_set_text_fmt(ui_TemperatureMax, "%d", (int)val);
     }
 }
-// Biến Series & Giả lập nhiệt độ cho Chart1
-static lv_chart_series_t * ui_chart_series = NULL;
-static float sim_angle = 0.0f;
-
-// Callback Timer 2 giây (2,000 ms) đọc giá trị từ ui_Temperture1 nạp vào Chart1 (30 mẫu, FIFO)
-static void temp_chart_timer_cb(lv_timer_t * timer) {
-    if (!ui_Chart1 || !ui_chart_series) return;
-
-    // 1. Giả lập nhiệt độ ngẫu nhiên từ 70.0 đến 120.0°C
-    float sim_temp = 70.0f + (rand() % 501) / 10.0f; // 70.0 ~ 120.0 (bước 0.1)
-
-    // 2. Cập nhật con số hiển thị chính (ui_Temperture1)
-    //    Lưu ý: lv_label_set_text_fmt dùng lv_snprintf KHÔNG hỗ trợ %f (float)
-    //    Phải dùng snprintf chuẩn C trước rồi truyền chuỗi vào lv_label_set_text
-    if (ui_Temperture1) {
-        char buf[16];
-        snprintf(buf, sizeof(buf), "%.1f", sim_temp);
-        lv_label_set_text(ui_Temperture1, buf);
-    }
-
-    // 3. Nạp giá trị vào biểu đồ (Thêm điểm mới ở cuối, tự động xoá điểm cũ ở đầu)
-    int16_t chart_val = (int16_t)roundf(sim_temp);
-    lv_chart_set_next_value(ui_Chart1, ui_chart_series, chart_val);
-    lv_chart_refresh(ui_Chart1);
-}
 
 void setup() {
     Serial.begin(115200);
@@ -210,20 +270,36 @@ void setup() {
     Serial.println(" Starting JC4827W543 Display Test... ");
     Serial.println("=====================================");
 
-    // Khởi tạo UART1 kết nối RP2040 (TX: GPIO 17, RX: GPIO 18, Baud: 115200)
+    // Khởi tạo UART1 làm Modbus RTU Master Poll (TX: GPIO 17, RX: GPIO 18, Baud: 115200, Target Slave ID: 1, Poll: 500ms)
     Serial1.begin(UART1_BAUD, SERIAL_8N1, UART1_RX_PIN, UART1_TX_PIN);
-    Serial.println("[UART1] Khởi tạo thành công (TX: 17, RX: 18, Baud: 115200) kết nối RP2040");
+    modbus.begin(&Serial1, 1, 500, on_modbus_data_received);
+    Serial.println("[Modbus RTU Master] Khởi tạo thành công Master Poll trên UART1 (COM3, 115200 8N1, Target Slave ID: 1, Poll: 500ms)");
 
-    // Khởi tạo chân GND mềm (GPIO 16 = 0V) và chân đọc EC11 (CLK: 6, DT: 7, SW: 15)
+    // Cấu hình Cổng P2 (EC11 #1 - Điều khiển Min Temperature)
     pinMode(EC11_GND_PIN, OUTPUT);
-    digitalWrite(EC11_GND_PIN, LOW); // Cấp mát (0V) trực tiếp qua GPIO 16
+    digitalWrite(EC11_GND_PIN, LOW); // Cấp 0V qua IO9
 
     pinMode(EC11_CLK_PIN, INPUT_PULLUP);
     pinMode(EC11_DT_PIN, INPUT_PULLUP);
     pinMode(EC11_SW_PIN, INPUT_PULLUP);
-    last_clk_state = digitalRead(EC11_CLK_PIN);
+
+    enc_prevState = (digitalRead(EC11_CLK_PIN) << 1) | digitalRead(EC11_DT_PIN);
     attachInterrupt(digitalPinToInterrupt(EC11_CLK_PIN), ec11_isr, CHANGE);
-    Serial.println("[EC11] Khởi tạo thành công (CLK: IO6, DT: IO7, SW: IO15, GND: IO16=0V)");
+    attachInterrupt(digitalPinToInterrupt(EC11_DT_PIN), ec11_isr, CHANGE);
+    Serial.println("[EC11 #1] Cổng P2: SW=IO46, GND=IO9 (0V), PhaseA=IO14, PhaseB=IO5");
+
+    // Cấu hình Cổng P3 (EC11 #2 - Điều khiển Max Temperature)
+    pinMode(EC11_2_GND_PIN, OUTPUT);
+    digitalWrite(EC11_2_GND_PIN, LOW); // Cấp 0V qua IO7
+
+    pinMode(EC11_2_CLK_PIN, INPUT_PULLUP);
+    pinMode(EC11_2_DT_PIN, INPUT_PULLUP);
+    pinMode(EC11_2_SW_PIN, INPUT_PULLUP);
+
+    enc2_prevState = (digitalRead(EC11_2_CLK_PIN) << 1) | digitalRead(EC11_2_DT_PIN);
+    attachInterrupt(digitalPinToInterrupt(EC11_2_CLK_PIN), ec11_2_isr, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(EC11_2_DT_PIN), ec11_2_isr, CHANGE);
+    Serial.println("[EC11 #2] Cổng P3: SW=IO6, GND=IO7 (0V), PhaseA=IO15, PhaseB=IO16");
 
     // Kết nối WiFi
     initWiFi();
@@ -287,21 +363,23 @@ void setup() {
         lv_obj_invalidate(lv_scr_act());
     }
 
-    // 2. Cấu hình Arc Min: Giới hạn từ 20 đến 120, liên kết tự động với ui_TemperatureMin
+    // 2. Cấu hình Arc Min: Giới hạn từ 20 đến 120, đặt giá trị ban đầu là 50
     if (ui_ArcMin) {
         lv_arc_set_range(ui_ArcMin, 20, 120);
+        lv_arc_set_value(ui_ArcMin, 50); // Khởi tạo 50°C để xoay tăng hay giảm đều thấy số nhảy ngay
         lv_obj_add_event_cb(ui_ArcMin, arc_min_cb, LV_EVENT_VALUE_CHANGED, NULL);
         if (ui_TemperatureMin) {
-            lv_label_set_text_fmt(ui_TemperatureMin, "%d", (int)lv_arc_get_value(ui_ArcMin));
+            lv_label_set_text(ui_TemperatureMin, "50");
         }
     }
 
-    // 3. Cấu hình Arc Max: Giới hạn từ 40 đến 140, liên kết tự động với ui_TemperatureMax
+    // 3. Cấu hình Arc Max: Giới hạn từ 40 đến 140, đặt giá trị ban đầu là 100°C
     if (ui_ArcMax) {
         lv_arc_set_range(ui_ArcMax, 40, 140);
+        lv_arc_set_value(ui_ArcMax, 100); // Khởi tạo 100°C cho Arc Max
         lv_obj_add_event_cb(ui_ArcMax, arc_max_cb, LV_EVENT_VALUE_CHANGED, NULL);
         if (ui_TemperatureMax) {
-            lv_label_set_text_fmt(ui_TemperatureMax, "%d", (int)lv_arc_get_value(ui_ArcMax));
+            lv_label_set_text(ui_TemperatureMax, "100");
         }
     }
 
@@ -309,8 +387,8 @@ void setup() {
     if (ui_Chart1) {
         lv_chart_set_update_mode(ui_Chart1, LV_CHART_UPDATE_MODE_SHIFT); // Chế độ cuộn FIFO SHIFT
         lv_chart_set_point_count(ui_Chart1, 30); // 30 mẫu dữ liệu
-        lv_chart_set_range(ui_Chart1, LV_CHART_AXIS_PRIMARY_Y, 60, 130);   // Trục Y bên trái: 60~130°C
-        lv_chart_set_range(ui_Chart1, LV_CHART_AXIS_SECONDARY_Y, 60, 130); // Trục Y bên phải: 60~130°C (khớp bên trái)
+        lv_chart_set_range(ui_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 150);   // Trục Y bên trái: 0~150°C
+        lv_chart_set_range(ui_Chart1, LV_CHART_AXIS_SECONDARY_Y, 0, 150); // Trục Y bên phải: 0~150°C
         
         // Lấy 1 Series duy nhất từ SquareLine Studio (loại bỏ series trùng lặp)
         ui_chart_series = lv_chart_get_series_next(ui_Chart1, NULL);
@@ -320,14 +398,15 @@ void setup() {
             ui_chart_series->color = lv_color_hex(0x10B981); // Đổi màu sang Xanh Lá Neon
         }
 
-        // Nạp sẵn 30 mẫu ngẫu nhiên 70~120 ban đầu để lấp đầy biểu đồ
+        // Đặt baseline ban đầu cho biểu đồ
         for (int i = 0; i < 30; i++) {
-            int16_t init_val = 70 + (rand() % 51); // Random 70 ~ 120
-            lv_chart_set_next_value(ui_Chart1, ui_chart_series, init_val);
+            lv_chart_set_next_value(ui_Chart1, ui_chart_series, 0);
         }
-        
-        // Tạo Timer 2 giây (2,000 ms) chạy lấy mẫu giả lập
-        lv_timer_create(temp_chart_timer_cb, 2000, NULL);
+    }
+
+    // Đặt hiển thị ban đầu ở giữa màn hình là --.- (chờ nhận nhiệt độ từ Modbus Master Poll)
+    if (ui_Temperture1) {
+        lv_label_set_text(ui_Temperture1, "--.-");
     }
 
     // Giao diện WiFi GUI (Icon 📶 & Bàn phím cảm ứng)
@@ -337,33 +416,114 @@ void setup() {
 }
 
 void loop() {
+    modbus.task();
     lv_timer_handler();
+    modbus.task();
 
-    // Đọc dữ liệu nhận từ RP2040 qua UART1
-    while (Serial1.available()) {
-        char c = Serial1.read();
-        Serial.print(c); // Chuyển tiếp dữ liệu RP2040 ra Serial Monitor để debug
+    // Định kỳ 2 giây tự động đồng bộ Min và Max hiện tại xuống ModSim32 (Slave)
+    static uint32_t last_sync_thresholds = 0;
+    if (millis() - last_sync_thresholds > 2000) {
+        last_sync_thresholds = millis();
+        int min_val = ui_ArcMin ? lv_arc_get_value(ui_ArcMin) : 50;
+        int max_val = ui_ArcMax ? lv_arc_get_value(ui_ArcMax) : 100;
+        modbus.writeSingleRegister(MB_REG_TEMP_MIN, min_val);
+        delay(10);
+        modbus.writeSingleRegister(MB_REG_TEMP_MAX, max_val);
     }
 
-    // Đọc nút nhấn EC11 (SW) - Tối ưu Non-blocking (Không làm chậm UI / LVGL)
+    // 1. XỬ LÝ EC11 #1 (CỔNG P2) - ĐIỀU KHIỂN MIN TEMPERATURE
+    static int32_t last_reported_count = 0;
+    int32_t diff = encoder_count - last_reported_count;
+    if (abs(diff) >= 4) { // 4 bước chuyển trạng thái = đúng 1 khấc xoay cơ học (1 detent)
+        int32_t delta = diff / 4; // Mỗi khấc xoay tăng/giảm chính xác 1 đơn vị, cực kỳ đầm và chuẩn
+        last_reported_count += delta * 4;
+        Serial.printf("[EC11 #1] Xoay: count=%d | Delta=%d\n", encoder_count, delta);
+
+        if (ui_ArcMin) {
+            int32_t cur_val = lv_arc_get_value(ui_ArcMin);
+            int32_t new_val = cur_val + delta;
+            if (new_val < 20) new_val = 20;
+            if (new_val > 120) new_val = 120;
+
+            lv_arc_set_value(ui_ArcMin, new_val);
+            if (ui_TemperatureMin) {
+                lv_label_set_text_fmt(ui_TemperatureMin, "%d", (int)new_val);
+            }
+            // Gửi FC06 ghi ngưỡng Min mới xuống Slave (ModSim32 trên PC qua COM3)
+            modbus.writeSingleRegister(MB_REG_TEMP_MIN, new_val);
+        }
+    }
+
+    // Đọc nút nhấn SW1 (IO46) - Bấm nút sẽ reset Min Temp về 50°C
     static uint32_t last_sw_press = 0;
     static bool sw_last_state = HIGH;
     bool sw_curr_state = digitalRead(EC11_SW_PIN);
-
     if (sw_last_state == HIGH && sw_curr_state == LOW) {
-        if (millis() - last_sw_press > 200) { // Chống dội phím non-blocking 200ms
-            Serial.println("[EC11] Nút nhấn SW được BẤM!");
+        if (millis() - last_sw_press > 250) {
+            Serial.println("[EC11 #1] Nút nhấn SW (IO46) được BẤM -> Đặt lại 50°C");
+            if (ui_ArcMin) {
+                lv_arc_set_value(ui_ArcMin, 50);
+                if (ui_TemperatureMin) lv_label_set_text(ui_TemperatureMin, "50");
+            }
+            modbus.writeSingleRegister(MB_REG_TEMP_MIN, 50);
             last_sw_press = millis();
         }
     }
     sw_last_state = sw_curr_state;
 
-    // Báo vị trí nấc xoay EC11 khi có thay đổi
-    static int32_t last_reported_count = 0;
-    if (encoder_count != last_reported_count) {
-        Serial.printf("[EC11] Vị trí Encoder: %d\n", encoder_count);
-        last_reported_count = encoder_count;
+    // Log realtime mỗi khi có xung encoder 1 thay đổi
+    static int32_t last_raw_count = 0;
+    if (encoder_count != last_raw_count) {
+        Serial.printf("[EC11 #1 Raw] count=%d (CLK=%d, DT=%d)\n", encoder_count, digitalRead(EC11_CLK_PIN), digitalRead(EC11_DT_PIN));
+        last_raw_count = encoder_count;
     }
 
-    delay(5);
+    // 2. XỬ LÝ EC11 #2 (CỔNG P3) - ĐIỀU KHIỂN MAX TEMPERATURE
+    static int32_t last_reported_count2 = 0;
+    int32_t diff2 = encoder2_count - last_reported_count2;
+    if (abs(diff2) >= 4) { // 4 bước chuyển trạng thái = đúng 1 khấc xoay cơ học (1 detent)
+        int32_t delta2 = diff2 / 4;
+        last_reported_count2 += delta2 * 4;
+        Serial.printf("[EC11 #2] Xoay: count=%d | Delta=%d\n", encoder2_count, delta2);
+
+        if (ui_ArcMax) {
+            int32_t cur_val = lv_arc_get_value(ui_ArcMax);
+            int32_t new_val = cur_val + delta2;
+            if (new_val < 40) new_val = 40;
+            if (new_val > 140) new_val = 140;
+
+            lv_arc_set_value(ui_ArcMax, new_val);
+            if (ui_TemperatureMax) {
+                lv_label_set_text_fmt(ui_TemperatureMax, "%d", (int)new_val);
+            }
+            // Gửi FC06 ghi ngưỡng Max mới xuống Slave (ModSim32 trên PC qua COM3)
+            modbus.writeSingleRegister(MB_REG_TEMP_MAX, new_val);
+        }
+    }
+
+    // Đọc nút nhấn SW2 (IO6) - Bấm nút sẽ reset Max Temp về 100°C
+    static uint32_t last_sw2_press = 0;
+    static bool sw2_last_state = HIGH;
+    bool sw2_curr_state = digitalRead(EC11_2_SW_PIN);
+    if (sw2_last_state == HIGH && sw2_curr_state == LOW) {
+        if (millis() - last_sw2_press > 250) {
+            Serial.println("[EC11 #2] Nút nhấn SW (IO6) được BẤM -> Đặt lại 100°C");
+            if (ui_ArcMax) {
+                lv_arc_set_value(ui_ArcMax, 100);
+                if (ui_TemperatureMax) lv_label_set_text(ui_TemperatureMax, "100");
+            }
+            modbus.writeSingleRegister(MB_REG_TEMP_MAX, 100);
+            last_sw2_press = millis();
+        }
+    }
+    sw2_last_state = sw2_curr_state;
+
+    // Log realtime mỗi khi có xung encoder 2 thay đổi
+    static int32_t last_raw_count2 = 0;
+    if (encoder2_count != last_raw_count2) {
+        Serial.printf("[EC11 #2 Raw] count=%d (CLK=%d, DT=%d)\n", encoder2_count, digitalRead(EC11_2_CLK_PIN), digitalRead(EC11_2_DT_PIN));
+        last_raw_count2 = encoder2_count;
+    }
+
+    delay(2);
 }

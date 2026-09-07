@@ -56,3 +56,9 @@ ehthumbs.db
 *.swp
 *~
 *.crash
+
+# Node.js & Web runtime
+**/node_modules/
+node_modules/
+PWA/certs/
+PWA/data/

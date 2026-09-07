@@ -67,11 +67,11 @@ Dự án được cấu hình lật tọa độ để khớp chuẩn 100% với 
 
 ## 🔌 4. Cấu Hình Cổng Nối Tiếp UART1 (Kết Nối RP2040)
 
-* **TX Pin (Phát)**: `GPIO 17` (Nối với chân RX của RP2040)
-* **RX Pin (Nhận)**: `GPIO 18` (Nối với chân TX của RP2040)
+* **TX Pin (Phát)**: `GPIO 17` (Nối với chân RX của RP2040 hoặc cổng nhận thiết bị ngoài)
+* **RX Pin (Nhận)**: `GPIO 18` (Nối với chân TX của RP2040 hoặc cổng phát thiết bị ngoài)
 * **Tốc độ Baud Rate**: `115200 bps` (SERIAL_8N1)
 
-### 💻 Khởi tạo trong `src/main.cpp`:
+### 💻 Khởi tạo & Các Gói Tin Text trong `src/main.cpp`:
 ```cpp
 #define UART1_TX_PIN 17
 #define UART1_RX_PIN 18
@@ -79,7 +79,23 @@ Dự án được cấu hình lật tọa độ để khớp chuẩn 100% với 
 
 // Trong setup():
 Serial1.begin(UART1_BAUD, SERIAL_8N1, UART1_RX_PIN, UART1_TX_PIN);
+modbus.begin(&Serial1, 1, on_modbus_register_write);
+
+// Trong loop():
+modbus.task(); // Xử lý các khung truyền Modbus RTU Slave phi phong tỏa
 ```
+
+### 📋 Bảng Thanh Ghi Modbus (Holding Registers - Cổng COM3):
+* **`40001`**: Nhiệt độ đo tức thời x10 (ví dụ `854` tương ứng **85.4°C**) - *Read / Write*. Khi Modbus Master ghi giá trị vào thanh ghi này qua FC06 hoặc FC16, màn hình LCD 4.3" sẽ cập nhật con số lớn ở chính giữa (`ui_Temperture1`), đẩy điểm mới vào biểu đồ (`ui_Chart1`), và tự động so khớp ngưỡng Min/Max để kích hoạt cảnh báo.
+* **`40002`**: Ngưỡng nhiệt độ Min (`20 ~ 120°C`) - *Read / Write* (đồng bộ 2 chiều với núm vặn P2 và màn hình cảm ứng).
+* **`40003`**: Ngưỡng nhiệt độ Max (`40 ~ 140°C`) - *Read / Write* (đồng bộ 2 chiều với núm vặn P3 và màn hình cảm ứng).
+* **`40004`**: Trạng thái Alarm (`0`: Bình thường, `1`: Dưới Min, `2`: Quá nhiệt) - *Read-Only*.
+* **`40005`**: Xung núm vặn Min P2 - *Read-Only*.
+* **`40006`**: Xung núm vặn Max P3 - *Read-Only*.
+
+### 🖥 Phân Biệt Cổng COM Trên Máy Tính:
+* **`COM9` (Cổng USB-C JC4827W543)**: Cổng USB-Serial/JTAG tích hợp trên ESP32-S3. Dùng để **nạp code (Flash Firmware)**, debug lỗi màn hình, xem log hệ thống.
+* **`COM3` (Cổng UART1 Modbus RTU)**: Nối qua mạch USB-to-TTL vào chân **`GPIO 17 (TX1)`** và **`GPIO 18 (RX1)`** của ESP32-S3. Hoạt động ở chế độ Modbus RTU Slave (ID: 1, 115200 8N1). Master đọc/ghi các thanh ghi `40001 ~ 40006`.
 
 ---
 
@@ -87,31 +103,31 @@ Serial1.begin(UART1_BAUD, SERIAL_8N1, UART1_RX_PIN, UART1_TX_PIN);
 
 Sử dụng trực tiếp **2 cổng cắm chuẩn SH1.0 (4 chân)** có sẵn trên bo mạch JC4827W543 mà không cần hàn nối dây phụ:
 
-### 🎛 Cổng SH1.0 Số 1 (Chỉnh `TemperatureMin` - Chân IO46, IO9, IO14, IO5):
-* **Pin 1 - CLK1**: `GPIO 46` *(Ngắt phần cứng `IRAM_ATTR`)*
-* **Pin 2 - DT1**: `GPIO 9`
-* **Pin 3 - SW1 (Nút nhấn Min)**: `GPIO 14` *(INPUT_PULLUP)*
-* **Pin 4 - GND1 (Software GND)**: `GPIO 5` *(Cấu hình `OUTPUT`, `LOW` 0V làm Mát)*
+### 🎛 Cổng SH1.0 Số 1 / Connector P2 (Module EC11 #1 - Chỉnh Min Temperature):
+* **Pin 1 - SW (Nút nhấn)**: `GPIO 46` *(INPUT_PULLUP - Bấm nút đặt lại 50°C)*
+* **Pin 2 - GND (Cực Mass chung)**: `GPIO 9` *(Cấu hình `OUTPUT`, `LOW` 0V làm Mát)*
+* **Pin 3 - Phase A (CLK)**: `GPIO 14` *(Ngắt phần cứng `IRAM_ATTR`)*
+* **Pin 4 - Phase B (DT)**: `GPIO 5` *(Ngắt phần cứng `IRAM_ATTR`)*
 
-### 🎛 Cổng SH1.0 Số 2 (Chỉnh `TemperatureMax` - Chân IO6, IO7, IO15, IO16):
-* **Pin 1 - CLK2**: `GPIO 6` *(Ngắt phần cứng `IRAM_ATTR`)*
-* **Pin 2 - DT2**: `GPIO 7`
-* **Pin 3 - SW2 (Nút nhấn Max / WiFi GUI)**: `GPIO 15` *(INPUT_PULLUP)*
-* **Pin 4 - GND2 (Software GND)**: `GPIO 16` *(Cấu hình `OUTPUT`, `LOW` 0V làm Mát)*
+### 🎛 Cổng SH1.0 Số 2 / Connector P3 (Module EC11 #2 - Chỉnh Max Temperature):
+* **Pin 1 - SW2 (Nút nhấn)**: `GPIO 6` *(INPUT_PULLUP - Bấm nút đặt lại 100°C)*
+* **Pin 2 - GND2 (Cực Mass chung)**: `GPIO 7` *(Cấu hình `OUTPUT`, `LOW` 0V làm Mát)*
+* **Pin 3 - Phase A (CLK2)**: `GPIO 15` *(Ngắt phần cứng `IRAM_ATTR`)*
+* **Pin 4 - Phase B (DT2)**: `GPIO 16` *(Ngắt phần cứng `IRAM_ATTR`)*
 
 ### 💻 Cấu hình trong `src/main.cpp`:
 ```cpp
-// EC11 Núm 1 - Min Temp (Connector SH1.0 #1)
-#define EC11_1_CLK  46
-#define EC11_1_DT   9
-#define EC11_1_SW   14
-#define EC11_1_GND  5   // OUTPUT LOW (0V)
+// Cấu hình Cổng P2 (EC11 #1 - Điều khiển Min Temperature)
+#define EC11_SW_PIN   46  // Chân 1: Nút nhấn (SW) - IO46
+#define EC11_GND_PIN  9   // Chân 2: Common Ground (0V) - IO9
+#define EC11_CLK_PIN  14  // Chân 3: Phase A - IO14 (Đảo với DT để xoay phải là TĂNG)
+#define EC11_DT_PIN   5   // Chân 4: Phase B - IO5
 
-// EC11 Núm 2 - Max Temp (Connector SH1.0 #2)
-#define EC11_2_CLK  6
-#define EC11_2_DT   7
-#define EC11_2_SW   15
-#define EC11_2_GND  16  // OUTPUT LOW (0V)
+// Cấu hình Cổng P3 (EC11 #2 - Điều khiển Max Temperature)
+#define EC11_2_SW_PIN   6   // Chân 1: Nút nhấn (SW) - IO6
+#define EC11_2_GND_PIN  7   // Chân 2: Common Ground (0V) - IO7
+#define EC11_2_CLK_PIN  15  // Chân 3: Phase A - IO15
+#define EC11_2_DT_PIN   16  // Chân 4: Phase B - IO16
 ```
 
 ---

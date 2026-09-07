@@ -22,12 +22,14 @@ if ('serviceWorker' in navigator) {
 // 2. CẤU HÌNH & BIẾN TOÀN CỤC
 // ============================================================
 const CONFIG = {
-    mode: localStorage.getItem('cf_iot_mode') || 'mqtt', // 'mqtt' hoặc 'simulated'
+    mode: localStorage.getItem('cf_iot_mode_v3') || 'simulated', // Mac dinh luon chay Mo phong
     mqttHost: localStorage.getItem('cf_iot_mqtt_host') || 'broker.emqx.io',
     mqttPort: parseInt(localStorage.getItem('cf_iot_mqtt_port')) || 8083,
     mqttTopic: localStorage.getItem('cf_iot_mqtt_topic') || 'cf_iot/temperature',
     mqttUser: localStorage.getItem('cf_iot_mqtt_user') || '',
     mqttPass: localStorage.getItem('cf_iot_mqtt_pass') || '',
+    minTempThreshold: parseInt(localStorage.getItem('cf_iot_min_temp')) || 30,
+    maxTempThreshold: parseInt(localStorage.getItem('cf_iot_max_temp')) || 100,
 
     tempMinGauge: 0,
     tempMaxGauge: 150,
@@ -37,8 +39,8 @@ const CONFIG = {
 // Dữ liệu nhiệt độ toàn cục
 const sensorData = {
     temperature: 0,
-    setTempMin: 40,      // Ngưỡng Min cài đặt
-    setTempMax: 110,     // Ngưỡng Max cài đặt
+    setTempMin: CONFIG.minTempThreshold,
+    setTempMax: CONFIG.maxTempThreshold,
     history: [],         // Lịch sử nhiệt độ
     alertsLog: [],       // Nhật ký cảnh báo
     tempMin: Infinity,
@@ -103,15 +105,19 @@ function initNavigation() {
         });
     });
 
-    menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-        overlay.classList.toggle('active');
-    });
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
+    }
 
-    overlay.addEventListener('click', () => {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
 }
 
 // ============================================================
@@ -163,9 +169,11 @@ function onMQTTConnectSuccess() {
 }
 
 function onMQTTConnectFailure(response) {
-    console.error('[MQTT] ❌ Kết nối thất bại:', response.errorMessage);
-    updateConnectionStatus('offline', 'MQTT Thất bại');
-    showNotification(`❌ Lỗi kết nối MQTT: ${response.errorMessage}`, 'error');
+    const errorMsg = (response && response.errorMessage) ? response.errorMessage : 'Không thể kết nối';
+    console.error('[MQTT] ❌ Kết nối thất bại:', errorMsg);
+    updateConnectionStatus('online', 'Mô phỏng (Tự động)');
+    showNotification(`⚠️ Kết nối MQTT thất bại (${errorMsg}). Tự động chuyển sang Mô phỏng dữ liệu!`, 'warning');
+    startSimulationMode();
 }
 
 function onMQTTConnectionLost(response) {
@@ -609,20 +617,34 @@ function renderFullAlertsList() {
         return;
     }
 
-    container.innerHTML = sensorData.alertsLog.map(alert => `
+    container.innerHTML = sensorData.alertsLog.map(alert => {
+        const timeStr = alert.time instanceof Date ? alert.time.toLocaleTimeString('vi-VN') : new Date(alert.time).toLocaleTimeString('vi-VN');
+        return `
         <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid ${alert.status === 'high' ? '#f43f5e' : '#3b82f6'};">
             <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <strong style="color: ${alert.status === 'high' ? '#f43f5e' : '#3b82f6'};">${alert.status === 'high' ? '🚨 CẢNH BÁO QUÁ NHIỆT' : '❄️ DƯỚI NGƯỠNG AN TOÀN'}</strong>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">${alert.toLocaleString('vi-VN')}</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">${timeStr}</span>
             </div>
             <p style="margin: 0; font-size: 0.9rem;">${alert.message}</p>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ============================================================
 // 8. CÀI ĐẶT CẤU HÌNH & CHẾ ĐỘ MÔ PHỎNG
 // ============================================================
+
+function updateArcUI(minVal, maxVal) {
+    const minTextEl = $('#lvglArcMinText');
+    const maxTextEl = $('#lvglArcMaxText');
+    if (minTextEl) minTextEl.textContent = minVal.toString();
+    if (maxTextEl) maxTextEl.textContent = maxVal.toString();
+    
+    // Nếu muốn, bạn có thể tính toán lại độ lớn góc của vòng cung (Arc) ở đây
+    // Hiện tại để đơn giản ta chỉ cập nhật con số hiển thị
+}
+
 function initSettings() {
     const modeSelect = $('#connectionMode');
     const hostInput = $('#mqttHost');
@@ -630,16 +652,18 @@ function initSettings() {
     const topicInput = $('#mqttTopic');
     const userInput = $('#mqttUser');
     const passInput = $('#mqttPass');
-    const saveBtn = $('#btnSaveSettings');
-    const testBtn = $('#btnTestConnection');
-
+    // Nạp cấu hình hiện tại
     if (modeSelect) modeSelect.value = CONFIG.mode;
     if (hostInput) hostInput.value = CONFIG.mqttHost;
     if (portInput) portInput.value = CONFIG.mqttPort;
     if (topicInput) topicInput.value = CONFIG.mqttTopic;
     if (userInput) userInput.value = CONFIG.mqttUser;
     if (passInput) passInput.value = CONFIG.mqttPass;
+    
+    // Cập nhật UI ban đầu cho vòng cung LVGL
+    updateArcUI(CONFIG.minTempThreshold, CONFIG.maxTempThreshold);
 
+    const saveBtn = $('#btnSaveSettings');
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             CONFIG.mode = modeSelect.value;
@@ -649,46 +673,160 @@ function initSettings() {
             CONFIG.mqttUser = userInput.value.trim();
             CONFIG.mqttPass = passInput.value.trim();
 
-            localStorage.setItem('cf_iot_mode', CONFIG.mode);
+            localStorage.setItem('cf_iot_mode_v3', CONFIG.mode);
             localStorage.setItem('cf_iot_mqtt_host', CONFIG.mqttHost);
             localStorage.setItem('cf_iot_mqtt_port', CONFIG.mqttPort.toString());
             localStorage.setItem('cf_iot_mqtt_topic', CONFIG.mqttTopic);
             localStorage.setItem('cf_iot_mqtt_user', CONFIG.mqttUser);
             localStorage.setItem('cf_iot_mqtt_pass', CONFIG.mqttPass);
 
-            showNotification('💾 Đã lưu cấu hình MQTT!', 'success');
+            showNotification('💾 Đã lưu cấu hình!', 'success');
 
             restartConnection();
         });
     }
 
-    if (testBtn) {
-        testBtn.addEventListener('click', () => {
+    const btnTest = $('#btnTestConnection');
+    if (btnTest) {
+        btnTest.addEventListener('click', () => {
             if (mqttClient && mqttClient.isConnected()) {
-                const sampleTemp = (70 + Math.random() * 45).toFixed(1);
-                const message = new Paho.MQTT.Message(sampleTemp);
+                const sampleTemp = (Math.random() * 40 + 70).toFixed(1); // 70-110
+                const message = new Paho.MQTT.Message(sampleTemp.toString());
                 message.destinationName = CONFIG.mqttTopic;
                 mqttClient.send(message);
                 showNotification(`📡 Đã gửi thử mẫu ${sampleTemp}°C lên topic ${CONFIG.mqttTopic}`, 'info');
             } else {
-                showNotification('⚠️ Chưa kết nối tới MQTT Broker! Đang chuyển tạm sang chế độ Mô phỏng.', 'warning');
-                generateSimulatedData();
+                showNotification('⚠️ Chưa kết nối tới MQTT Broker! Đang kích hoạt chế độ Mô phỏng.', 'warning');
+                startSimulationMode();
             }
+        });
+    }
+
+    const btnSaveThresholds = $('#btnSaveThresholds');
+    if (btnSaveThresholds) {
+        btnSaveThresholds.addEventListener('click', () => {
+            const minTempInput = $('#minTempThreshold');
+            const maxTempInput = $('#maxTempThreshold');
+            const minV = parseInt(minTempInput.value);
+            const maxV = parseInt(maxTempInput.value);
+            
+            if (isNaN(minV) || isNaN(maxV) || minV >= maxV) {
+                showNotification('⚠️ Ngưỡng thiết lập không hợp lệ!', 'warning');
+                return;
+            }
+            saveAndPublishThresholds(minV, maxV);
+        });
+    }
+
+    // Quick adjust via Prompt on Dashboard
+    const minTextEl = $('#lvglArcMinText');
+    const maxTextEl = $('#lvglArcMaxText');
+
+    if (minTextEl) {
+        minTextEl.addEventListener('click', () => {
+            const currentMin = CONFIG.minTempThreshold;
+            const currentMax = CONFIG.maxTempThreshold;
+            const input = prompt(`Nhập Ngưỡng Thấp (Min) mới:\n(Hiện tại là ${currentMin}°C, phải nhỏ hơn Max ${currentMax}°C)`, currentMin);
+            
+            if (input !== null) {
+                const newVal = parseInt(input);
+                if (!isNaN(newVal)) {
+                    if (newVal >= currentMax) {
+                        showNotification('⚠️ Ngưỡng Min không được lớn hơn hoặc bằng Max!', 'warning');
+                    } else {
+                        saveAndPublishThresholds(newVal, currentMax);
+                    }
+                } else {
+                    showNotification('⚠️ Vui lòng nhập một số hợp lệ!', 'warning');
+                }
+            }
+        });
+    }
+
+    if (maxTextEl) {
+        maxTextEl.addEventListener('click', () => {
+            const currentMin = CONFIG.minTempThreshold;
+            const currentMax = CONFIG.maxTempThreshold;
+            const input = prompt(`Nhập Ngưỡng Cao (Max) mới:\n(Hiện tại là ${currentMax}°C, phải lớn hơn Min ${currentMin}°C)`, currentMax);
+            
+            if (input !== null) {
+                const newVal = parseInt(input);
+                if (!isNaN(newVal)) {
+                    if (newVal <= currentMin) {
+                        showNotification('⚠️ Ngưỡng Max không được nhỏ hơn hoặc bằng Min!', 'warning');
+                    } else {
+                        saveAndPublishThresholds(currentMin, newVal);
+                    }
+                } else {
+                    showNotification('⚠️ Vui lòng nhập một số hợp lệ!', 'warning');
+                }
+            }
+        });
+    }
+
+    const quickSimBtn = $('#btnQuickSim');
+    if (quickSimBtn) {
+        quickSimBtn.addEventListener('click', () => {
+            CONFIG.mode = 'simulated';
+            localStorage.setItem('cf_iot_mode_v3', 'simulated');
+            if (modeSelect) modeSelect.value = 'simulated';
+            startSimulationMode();
         });
     }
 }
 
-function startSimulationMode() {
-    if (simulatedTimer) clearInterval(simulatedTimer);
-    updateConnectionStatus('online', 'Mô phỏng (Simulated)');
-    showNotification('🧪 Đang chạy ở chế độ Mô phỏng dữ liệu', 'info');
+function saveAndPublishThresholds(minV, maxV) {
+    CONFIG.minTempThreshold = minV;
+    CONFIG.maxTempThreshold = maxV;
+    sensorData.setTempMin = minV;
+    sensorData.setTempMax = maxV;
+    
+    localStorage.setItem('cf_iot_min_temp', minV);
+    localStorage.setItem('cf_iot_max_temp', maxV);
+    
+    updateArcUI(minV, maxV);
+    
+    if (mqttClient && mqttClient.isConnected()) {
+        const configTopic = CONFIG.mqttTopic + "/config";
+        const payload = JSON.stringify({ min: minV, max: maxV });
+        const message = new Paho.MQTT.Message(payload);
+        message.destinationName = configTopic;
+        mqttClient.send(message);
+        showNotification(`📡 Đã gửi ngưỡng [${minV}°C - ${maxV}°C] xuống thiết bị!`, 'success');
+    } else {
+        showNotification(`💾 Đã lưu ngưỡng [${minV}°C - ${maxV}°C]. (Ngoại tuyến)`, 'info');
+    }
+}
 
-    simulatedTimer = setInterval(() => {
+function startSimulationMode() {
+    if (simulatedTimer) {
+        clearInterval(simulatedTimer);
+        simulatedTimer = null;
+    }
+    updateConnectionStatus('online', 'Mô phỏng (Đồng bộ qua MQTT)');
+    showNotification('🧪 Đang phát dữ liệu Mô phỏng lên MQTT Broker', 'info');
+
+    const generatePoint = () => {
         const baseTemp = 90;
         const variation = Math.sin(Date.now() / 8000) * 25 + (Math.random() - 0.5) * 6;
         const simVal = parseFloat((baseTemp + variation).toFixed(1));
-        processTemperatureData(simVal);
-    }, 2000);
+        
+        // Nếu có kết nối mạng, ĐẨY DỮ LIỆU LÊN BROKER để đồng bộ với điện thoại
+        if (typeof mqttClient !== 'undefined' && mqttClient !== null && mqttClient.isConnected && mqttClient.isConnected()) {
+            const message = new Paho.MQTT.Message(simVal.toString());
+            message.destinationName = CONFIG.mqttTopic;
+            mqttClient.send(message);
+            // Tin nhắn sẽ tự động dội lại qua sự kiện onMessageArrived
+        } else {
+            // Mất mạng thì chạy offline nội bộ
+            processTemperatureData(simVal);
+        }
+    };
+
+    // Đẩy ngay dữ liệu tức thì
+    generatePoint();
+
+    simulatedTimer = setInterval(generatePoint, 2000);
 }
 
 function restartConnection() {
@@ -697,8 +835,12 @@ function restartConnection() {
         simulatedTimer = null;
     }
 
-    if (mqttClient && mqttClient.isConnected()) {
-        try { mqttClient.disconnect(); } catch (e) {}
+    try {
+        if (mqttClient && typeof mqttClient.isConnected === 'function' && mqttClient.isConnected()) {
+            mqttClient.disconnect();
+        }
+    } catch (e) {
+        console.warn('[MQTT] Lỗi ngắt kết nối:', e);
     }
 
     if (CONFIG.mode === 'mqtt') {
@@ -727,7 +869,115 @@ function updateConnectionStatus(type, textStr) {
     }
 }
 
+let lastNativeNotifyTime = 0;
+
+function sendNativeNotification(title, message) {
+    if (!("Notification" in window)) return;
+    const now = Date.now();
+    if (now - lastNativeNotifyTime < 5000) return; // Cooldown 5s
+    lastNativeNotifyTime = now;
+
+    if (Notification.permission === "granted") {
+        triggerNativePopup(title, message);
+    }
+}
+
+function triggerNativePopup(title, message) {
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification(title, {
+                body: message,
+                icon: 'icons/icon-512.jpg',
+                badge: 'icons/icon-512.jpg',
+                vibrate: [300, 100, 300],
+                tag: 'cf-temp-alert',
+                renotify: true
+            });
+        }).catch(() => {
+            new Notification(title, { body: message, icon: 'icons/icon-512.jpg' });
+        });
+    } else {
+        new Notification(title, { body: message, icon: 'icons/icon-512.jpg' });
+    }
+}
+
+// Base64 to Uint8Array converter cho VAPID key
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function requestNotificationPermission() {
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        alert("Trình duyệt này không hỗ trợ Thông báo Nền (Web Push).");
+        return;
+    }
+
+    if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        alert("⚠️ Lưu ý bảo mật: Trình duyệt chặn thông báo khi truy cập qua HTTP. Hãy dùng HTTPS.");
+    }
+
+    if (Notification.permission === "denied") {
+        alert("⚠️ Quyền thông báo hiện đang bị CHẶN. Vui lòng vào Cài đặt trang web để 'Cho phép'.");
+        return;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            showNotification("⏳ Đang thiết lập thông báo nền (Web Push)...", "info");
+            
+            // 1. Lấy VAPID Public Key từ Backend
+            const response = await fetch('/api/vapid-public-key');
+            if (!response.ok) throw new Error("Không thể lấy VAPID key từ máy chủ.");
+            const vapidPublicKey = await response.text();
+            
+            // 2. Chờ Service Worker sẵn sàng
+            const registration = await navigator.serviceWorker.ready;
+            
+            // 3. Đăng ký Push
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+            
+            // 4. Gửi Subscription lên Backend
+            await fetch('/api/subscribe', {
+                method: 'POST',
+                body: JSON.stringify(subscription),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            showNotification("✅ Đã bật Thông báo Nền (Web Push) thành công! Điện thoại sẽ nhận cảnh báo kể cả khi tắt màn hình.", "success");
+            sendNativeNotification("CF TEMP MONITOR", "🔔 Cài đặt thông báo nền thành công!");
+        } else {
+            showNotification("⚠️ Bạn chưa cấp quyền thông báo.", "warning");
+        }
+    } catch (e) {
+        console.error("Lỗi đăng ký Web Push:", e);
+        showNotification("❌ Lỗi khi đăng ký thông báo nền: " + e.message, "error");
+    }
+}
+
 function showNotification(message, type = 'info') {
+    // Đẩy thông báo ra thanh Notification hệ thống điện thoại nếu là cảnh báo
+    if (type === 'error' || type === 'warning') {
+        const title = type === 'error' ? '🚨 CẢNH BÁO QUÁ NHIỆT!' : '⚠️ CẢNH BÁO NHIỆT ĐỘ!';
+        sendNativeNotification(title, message);
+    }
+
     const existing = $('.toast-notification');
     if (existing) existing.remove();
 
@@ -737,7 +987,7 @@ function showNotification(message, type = 'info') {
 
     Object.assign(toast.style, {
         position: 'fixed',
-        bottom: '24px',
+        bottom: '80px',
         right: '24px',
         padding: '14px 24px',
         borderRadius: '12px',
@@ -795,6 +1045,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initSettings();
     initChartControls();
+
+    const btnNotify = $('#btnEnableNotifications');
+    if (btnNotify) {
+        btnNotify.addEventListener('click', requestNotificationPermission);
+    }
 
     restartConnection();
 });
